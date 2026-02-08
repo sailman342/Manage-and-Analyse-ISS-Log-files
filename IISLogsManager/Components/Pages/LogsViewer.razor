@@ -8,11 +8,20 @@
 <h3>View logs content of @TheAppConfiguration.IISSiteSelectedLogFile.FileName in @TheAppConfiguration.IISSiteLogSubFolderName from domain/subdomain @TheAppConfiguration.IISSiteDomainName </h3>
 <br />
 <div style="display:flex;flex-direction:row">
-    <div style="margin:10px;display:flex;text-align:center;width:50%;flex-direction:column">
-        <Button Color="ButtonColor.Danger" Size="ButtonSize.Medium" @onclick="() => DeleteTheFileButtonClicked()">Delete @TheAppConfiguration.IISSiteSelectedLogFile.FileName</Button>
+    <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Medium" @onclick="() => UnMarkAllRowsButtonClicked()">UnMark all rows</Button>
     </div>
-    <div style="margin:10px;display:flex;text-align:center;width:50%;flex-direction:column">
-        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportToCsvButtonClicked()">Export @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
+    <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Medium" @onclick="() => MarkTheZoneButtonClicked()">Mark the rows in the zone</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportTheMarkedRowsToCsvButtonClicked()">Export the marked rows</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportTheFileToCsvButtonClicked()">Export the file @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Danger" Size="ButtonSize.Medium" @onclick="() => DeleteTheFileButtonClicked()">Delete the file @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
     </div>
 </div>
 <div style="display:flex;flex-direction:row">
@@ -57,7 +66,8 @@
       PageSizeSelectorVisible="true"
       PageSizeSelectorItems="@(new int[] {10, 50,  100, 500 , 1000, 10000})"
       AllowPaging="true"
-      OnRowClick="OnRowClick">
+      OnRowClick="OnRowClick"
+      RowClass="GetRowColorClass">
 
     <GridColumn TItem="IISLogRecord" HeaderText="Date" PropertyName="Date" SortKeySelector="item => item.Date">
         @context.Date.ToString("dd-MMM-yyyy")
@@ -95,8 +105,15 @@
 
     <FooterTemplate>
 
-        <Button Color="ButtonColor.Primary" @onclick="OnHideModalClick">Annuler/Retour</Button>
-
+        <Button Color="ButtonColor.Primary" @onclick="HideModalClick">Annuler/Retour</Button>
+        @if (TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked)
+        {
+            <Button Color="ButtonColor.Warning" @onclick="MarkUnmarkTheLineClicked">UnMark the line</Button>
+        }
+        else
+        {
+            <Button Color="ButtonColor.Warning" @onclick="MarkUnmarkTheLineClicked">Mark the line</Button>
+        }
     </FooterTemplate>
 
 </Modal>
@@ -110,7 +127,10 @@
     private TimeOnly startTime = TimeOnly.MaxValue;
     private TimeOnly endTime = TimeOnly.MinValue;
 
-    IISLogRecords iisLogRecords = new();
+    private IISLogRecords iisLogRecords = new();
+    private IISLogRecord lastRecord = default!;
+    private IISLogRecord firstRecord = default!;
+    private bool zoneMarked = false;
 
     RenderFragment? modalBodyTemplate;
 
@@ -163,6 +183,8 @@
     private async Task OnRowClick(GridRowEventArgs<IISLogRecord> args)
     {
         IISLogRecord iisLogRecord = args.Item;
+        TheAppConfiguration.IISSiteSelectedLogFileRow = iisLogRecord;
+
         Type type = iisLogRecord.GetType();
 
         // Construction dynamique du RenderFragment pour afficher les propriétés
@@ -191,7 +213,74 @@
         await modal.ShowAsync();
     }
 
-    private async Task OnHideModalClick()
+    private async void MarkUnmarkTheLineClicked()
+    {
+        zoneMarked = false; // if the zone was marked, we unmark it and we consider that the zone is not marked anymore, even if some of the lines are still marked, as the user can mark/unmark manually some lines after that
+        if (TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked)
+        {
+            TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked = false;
+        }
+        else
+        {
+            TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked = true;
+        }
+        await HideModalClick();
+        StateHasChanged();
+    }
+
+    private async void MarkTheZoneButtonClicked()
+    {
+        int foundMarkedRecord = 0;
+        foreach (IISLogRecord logRecord in iisLogRecords)
+        {
+            if (logRecord.IsMarked == true)
+            {
+                foundMarkedRecord++;
+                lastRecord = logRecord;
+            }
+        }
+        if (foundMarkedRecord < 2)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Too little selected", msg1Arg: $"You selected only {foundMarkedRecord} instead of minimum 2, please mark additional rows !");
+            return;
+        }
+
+        bool firstSelectedRecordFound = false;
+        foreach (IISLogRecord logRecord in iisLogRecords)
+        {
+            if (logRecord == lastRecord)
+            {
+                return;
+            }
+
+            if (logRecord.IsMarked)
+            {
+                if (!firstSelectedRecordFound)
+                {
+                    zoneMarked = true;
+                    firstSelectedRecordFound = true;
+                    firstRecord = logRecord;
+                }
+            }
+            else if (firstSelectedRecordFound)
+            {
+                logRecord.IsMarked = true;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private async void UnMarkAllRowsButtonClicked()
+    {
+        zoneMarked = false;
+        foreach (IISLogRecord logRecord in iisLogRecords)
+        {
+            logRecord.IsMarked = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task HideModalClick()
     {
         await modal.HideAsync();
     }
@@ -210,16 +299,36 @@
         }
     }
 
-    private async void ExportToCsvButtonClicked()
+    private async void ExportTheFileToCsvButtonClicked()
+    {
+        string csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", "-complete.csv");
+        ExportTheRowsToCSV(csvFileName, iisLogRecords, markedOnly: false);
+    }
+
+    private async void ExportTheMarkedRowsToCsvButtonClicked()
+    {
+        string csvFileName;
+        if(zoneMarked)
+        {
+            csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", $"-{firstRecord.LineNumber}-{lastRecord.LineNumber}-rows.csv");
+        }
+        else
+        {
+            csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", $"-selected-rows.csv");            
+        }
+
+        ExportTheRowsToCSV(csvFileName, iisLogRecords, markedOnly: true);
+    }
+
+    private async void ExportTheRowsToCSV(string csvFileNameForOutput, IISLogRecords iisLogRecordsToExport, bool markedOnly)
     {
         try
         {
-            string csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", ".csv");
             string csvData;
-            IISLogRecords iisLogRecords = new IISLogRecords(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
-            if (iisLogRecords.Count() > 0)
+
+            if (iisLogRecordsToExport.Count() > 0)
             {
-                csvData = iisLogRecords[0].GetLogRecordHeaderCSVString();
+                csvData = iisLogRecordsToExport[0].GetLogRecordHeaderCSVString();
             }
             else
             {
@@ -227,18 +336,36 @@
                 return;
             }
 
-            foreach (IISLogRecord iisLogRecord in iisLogRecords)
+            foreach (IISLogRecord iisLogRecord in iisLogRecordsToExport)
             {
+                if(markedOnly && !iisLogRecord.IsMarked)
+                {
+                    continue;
+                }
                 csvData += iisLogRecord.GetLogRecordValuesCSVString() + "\r\n"; ;
             }
 
             // SaveFile will return before the file is written, as it is waiting for user action
-            await JS.InvokeAsync<object>("SaveToFile_SaveFileToDownloadFolder", csvFileName, csvData);
-            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been exported successfully to {csvFileName}.");
+            await JS.InvokeAsync<object>("SaveToFile_SaveFileToDownloadFolder", csvFileNameForOutput, csvData);
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been exported successfully to {csvFileNameForOutput}.");
         }
         catch (Exception ex)
         {
             await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while exporting", msg1Arg: $"Exception error  {ex.Message}");
+        }
+    }
+
+
+
+    private string GetRowColorClass(IISLogRecord toBeColored)
+    {
+        if (toBeColored.IsMarked)
+        {
+            return "table-info";
+        }
+        else
+        {
+            return "";
         }
     }
 }

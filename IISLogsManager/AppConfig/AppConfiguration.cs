@@ -49,6 +49,7 @@ namespace IISLogsManager.AppConfig
         public string IISSiteDomainName { get; set; } = "";
 
         public IISLogFile IISSiteSelectedLogFile { get; set; } = new();
+        public IISLogRecord IISSiteSelectedLogFileRow { get; set; } = new();
         public static async Task<string> CopyAppConfigFileToBaseDirectory(IBrowserFile browserFile)
         {
             using Stream fileStream = browserFile.OpenReadStream(maxAllowedSize: 100000000);

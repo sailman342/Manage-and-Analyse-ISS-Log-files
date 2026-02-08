@@ -6,7 +6,7 @@ The IIS Logs Manager is a Micrososft Blazor Web (Server side) application to be 
 
 It has not been tested with other versions.
 
-It is developed with Visual Studio 2026 but very is likely compatible with Visual Studio 2022.
+It is developed with Visual Studio 2026 but is very likely compatible with Visual Studio 2022.
 
 The app uses Vikram Gaddam BlazorBootstrap (NuGet)
 
@@ -72,7 +72,7 @@ Click on a line to get full info and submenu
 
 ## 4.5 Manage/view log file (draft)
 
-<img src="image-20260208141030824.png" alt="image-20260208141030824" style="zoom:50%;" />
+<img src="image-20260208162518247.png" alt="image-20260208162518247" style="zoom:50%;" />
 
 Again, click on a line to get full details
 

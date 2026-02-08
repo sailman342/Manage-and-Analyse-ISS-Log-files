@@ -104,6 +104,10 @@ namespace IISLogsManager.DataBase
         [DB_ElementName("time-taken", "VARCHAR(255) NOT NULL", "Time Taken (ms)")]
         public string TimeTaken { get; set; } = "";
 
+        // Used internally for programmatic purposes
+
+        public bool IsMarked { get; set; } = false; // Used to mark/unmark records for selection
+
         public string GetLogRecordHeaderCSVString()
         {
             string outStr = "";
@@ -116,7 +120,7 @@ namespace IISLogsManager.DataBase
                     outStr += (elementNameAttribute?.ElementName ?? string.Empty).Replace(';','_') + " ;";
                 }
             }
-            return outStr;
+            return outStr +"\r\n";
         }
         public string GetLogRecordValuesCSVString()
         {

@@ -118,10 +118,19 @@
             <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
                 <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="ViewFileClick">Manage/View</Button>
             </div>
-
+            @if (TheAppConfiguration.IISSiteSelectedLogFile.IsMarked)
+            {
+                <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                    <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Unmark</Button>
+                </div>
+            }
+            else
+            {
             <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
-                <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Mark/Unmark</Button>
-            </div>
+                <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Mark</Button>
+            </div>                
+            }
+
 
             <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
                 <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="DeleteTheFileButtonClicked">Delete</Button>
@@ -258,7 +267,7 @@
         }
         if (foundMarkedFile < 2)
         {
-            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Too little selected", msg1Arg: $"You selected only {foundMarkedFile} instaed of minimum 2, please mark additional files !");
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Too little selected", msg1Arg: $"You selected only {foundMarkedFile} instead of minimum 2, please mark additional files !");
             return;
         }
 
@@ -282,6 +291,7 @@
                 logFile.IsMarked = true;
             }
         }
+        StateHasChanged();
     }
 
     private async void MergeAllMarkedFiles()
@@ -360,7 +370,7 @@
             return;
         }
 
-        string csvFileName = $"LogsExport-{DateTime.Now.ToString("dd-MM-yyyy")}-{DateTime.Now.ToString("HH-mm-ss-ff")}";
+        string csvFileName = $"FilesLogs-{DateTime.Now.ToString("dd-MM-yyyy")}-{DateTime.Now.ToString("HH-mm-ss-ff")}.csv";
         string csvData = "";
         bool dataFound = false;
         foreach (IISLogFile fileToExport in filesToExportToCsv)
