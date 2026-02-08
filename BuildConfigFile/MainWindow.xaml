@@ -1,0 +1,34 @@
+﻿<Window x:Class="BuildConfigFile.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:Local="clr-namespace:BuildConfigFile"
+        mc:Ignorable="d"
+        Title="Build configuration file" 
+        Height="1024" Width="1024">
+
+    <Grid HorizontalAlignment="Center" Width="1024" Margin="0,2,0,3">
+
+        <!-- LOP = Local (IIS) Production OLP= Online (Internet site) Production -->
+        <!-- LOT = Local (IIS) Test OLT= Online (Internet site) Test -->
+
+        <Label Content="Logs root directory" HorizontalAlignment="Left" Margin="45,112,0,0" VerticalAlignment="Top" Width="167" />
+        <TextBox x:Name="LogsRootDirectoryTextBox" HorizontalAlignment="Left" Margin="243,112,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="290" Height="26" RenderTransformOrigin="0.524,-1.845" />
+
+        <Label Content="Sites list : insert for each domain /subdomain a line in the format ID;SubFolder;DomainName; f.i. 4;W3SVC4;mysubdomain.domain.com; " HorizontalAlignment="Left" Margin="49,166,0,0" VerticalAlignment="Top" Width="901" />
+        <TextBox x:Name="SitesListTextBox" HorizontalAlignment="Left" Margin="49,200,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="901" Height="300" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
+
+        <Label Content="AdminLogin" HorizontalAlignment="Left" Margin="49,690,0,0" VerticalAlignment="Top" Width="167" />
+        <TextBox x:Name="AdminLoginTextBox" HorizontalAlignment="Left" Margin="243,689,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="290" Height="26" />
+
+        <Label Content="AdminPassword" HorizontalAlignment="Left" Margin="49,720,0,0" VerticalAlignment="Top" Width="167" />
+        <TextBox x:Name="AdminPasswordTextBox" HorizontalAlignment="Left" Margin="243,720,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="290" Height="26" />
+
+
+        <Button Content="Charger un fichier" Click="LoadFromFile" HorizontalAlignment="Left" Margin="45,817,0,0" VerticalAlignment="Top" Width="150"/>
+        <Button Content="Sauver dans un fichier" Click="SaveToFile" HorizontalAlignment="Left" Margin="235,817,0,0" VerticalAlignment="Top" Width="150"/>
+
+
+    </Grid>
+</Window>

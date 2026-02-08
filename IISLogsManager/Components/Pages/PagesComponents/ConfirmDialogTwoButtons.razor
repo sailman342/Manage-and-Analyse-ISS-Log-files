@@ -1,0 +1,66 @@
+﻿
+@using Microsoft.AspNetCore.Mvc.Rendering;
+
+<ConfirmDialog @ref="TheConfirmDialog" />
+
+@code {
+
+    public ConfirmDialog TheConfirmDialog { get; set; } = default!;
+    [Parameter]
+    public string Title { get; set; } = "Title";
+    [Parameter]
+    public string Message1 { get; set; } = "message 1";
+    [Parameter]
+    public string Message2 { get; set; } = "message 2";
+    [Parameter]
+    public string Button1Text { get; set; } = "OK";
+    [Parameter]
+    public string Button2Text { get; set; } = "Annuler";
+    [Parameter]
+    public ButtonColor Button1Color { get; set; } = ButtonColor.Primary;
+    [Parameter]
+    public ButtonColor Button2Color { get; set; } = ButtonColor.Secondary;
+
+    public async Task<bool> ShowAsync()
+    {
+        // Update the fields !
+
+        ConfirmDialogOptions options = new ConfirmDialogOptions
+            {
+                YesButtonText = Button1Text,
+                YesButtonColor = Button1Color,
+                NoButtonText = Button2Text,
+                NoButtonColor = Button2Color
+            };
+
+        bool confirmation = false;
+        confirmation = await TheConfirmDialog.ShowAsync(
+                title: Title,
+                message1: Message1,
+                message2: Message2,
+                confirmDialogOptions: options);
+
+        return confirmation;
+    }
+
+    public async Task<bool> ShowAsync(string titleArg, string msg1Arg, string msg2Arg = "", string Button1TextArg = "OK", ButtonColor button1ColorArg = ButtonColor.Primary, string Button2TextArg = "Annuler", ButtonColor button2ColorArg = ButtonColor.Secondary)
+    {
+        ConfirmDialogOptions options = new ConfirmDialogOptions
+            {
+                YesButtonText = Button1TextArg,
+                YesButtonColor = button1ColorArg,
+                NoButtonText = Button2TextArg,
+                NoButtonColor = button2ColorArg
+            };
+
+        bool confirmation = false;
+        confirmation = await TheConfirmDialog.ShowAsync(
+                title: titleArg,
+                message1: msg1Arg,
+                message2: msg2Arg,
+                confirmDialogOptions: options);
+
+        return confirmation;
+
+    }
+}

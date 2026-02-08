@@ -1,0 +1,244 @@
+﻿@page "/logsviewer"
+@using System.Reflection
+@using IISLogsManager.Database
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>View logs</PageTitle>
+
+<h3>View logs content of @TheAppConfiguration.IISSiteSelectedLogFile.FileName in @TheAppConfiguration.IISSiteLogSubFolderName from domain/subdomain @TheAppConfiguration.IISSiteDomainName </h3>
+<br />
+<div style="display:flex;flex-direction:row">
+    <div style="margin:10px;display:flex;text-align:center;width:50%;flex-direction:column">
+        <Button Color="ButtonColor.Danger" Size="ButtonSize.Medium" @onclick="() => DeleteTheFileButtonClicked()">Delete @TheAppConfiguration.IISSiteSelectedLogFile.FileName</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:50%;flex-direction:column">
+        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportToCsvButtonClicked()">Export @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
+    </div>
+</div>
+<div style="display:flex;flex-direction:row">
+    <div style="margin:10px;display:flex;text-align:center;width:25%;flex-direction:column">
+        <strong>
+            <label for="StartDate">Start date</label>
+        </strong>
+        <DateInput id="StartDate" TValue="DateOnly" @bind-Value="@startDate" Placeholder="startdate" />
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:25%;flex-direction:column">
+        <strong>
+            <label for="StartTime">Start Time</label>
+        </strong>
+        <TimeInput id="StartTime" TValue="TimeOnly" @bind-Value="@startTime" Placeholder="startTime" />
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:25%;flex-direction:column">
+        <strong>
+            <label for="EndDate">End date</label>
+        </strong>
+        <DateInput id="EndDate" TValue="DateOnly" @bind-Value="@endDate" Placeholder="enddate" />
+    </div>
+    <div style="margin:10px;display:flex;text-align:center;width:25%;flex-direction:column">
+        <strong>
+            <label for="EndTime">End Time</label>
+        </strong>
+        <TimeInput id="EndTime" TValue="TimeOnly" @bind-Value="@endTime" Placeholder="endTime" />
+    </div>
+</div>
+
+<Grid @ref="grid"
+      TItem="IISLogRecord"
+      Class="table table-hover table-bordered table-striped"
+      DataProvider="LogRecordsDataProvider"
+      AllowSorting="true"
+      AllowFiltering="true"
+      Responsive="true"
+      HeaderRowCssClass="bg-success text-white border-bottom-0"
+      AllowRowClick="true"
+      ItemsPerPageText="Log lines"
+      PaginationItemsTextFormat="{0} - {1} de {2} Log lines"
+      PageSize=50
+      PageSizeSelectorVisible="true"
+      PageSizeSelectorItems="@(new int[] {10, 50,  100, 500 , 1000, 10000})"
+      AllowPaging="true"
+      OnRowClick="OnRowClick">
+
+    <GridColumn TItem="IISLogRecord" HeaderText="Date" PropertyName="Date" SortKeySelector="item => item.Date">
+        @context.Date.ToString("dd-MMM-yyyy")
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="Time" PropertyName="Time" SortKeySelector="item => item.Time">
+        @context.Time.ToString("HH:mm:ss")
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="SourceIP" PropertyName="SourceIP" SortKeySelector="item => item.SourceIP">
+        @context.SourceIP
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="Command" PropertyName="Command" SortKeySelector="item => item.Command">
+        @context.Command
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="DestinationPort" PropertyName="DestinationPort" SortKeySelector="item => item.DestinationPort">
+        @context.DestinationPort
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="Object" PropertyName="Object" SortKeySelector="item => item.Object">
+        @context.Object
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="QueryString" PropertyName="QueryString" SortKeySelector="item => item.QueryString">
+        @context.QueryString
+    </GridColumn>
+    <GridColumn TItem="IISLogRecord" HeaderText="Status" PropertyName="Status" SortKeySelector="item => item.Status">
+        @context.Status
+    </GridColumn>
+</Grid>
+
+<ConfirmDialogSingleButton @ref="singleButtonConfirmDialog" />
+
+<Modal @ref="modal" title="Clicked row" Size="ModalSize.Large" IsScrollable="true">
+
+    <BodyTemplate>
+        @modalBodyTemplate
+    </BodyTemplate>
+
+    <FooterTemplate>
+
+        <Button Color="ButtonColor.Primary" @onclick="OnHideModalClick">Annuler/Retour</Button>
+
+    </FooterTemplate>
+
+</Modal>
+
+@code {
+    private Modal modal = default!;
+    BlazorBootstrap.Grid<IISLogRecord> grid = default!;
+
+    private DateOnly startDate = DateOnly.MaxValue;
+    private DateOnly endDate = DateOnly.MinValue;
+    private TimeOnly startTime = TimeOnly.MaxValue;
+    private TimeOnly endTime = TimeOnly.MinValue;
+
+    IISLogRecords iisLogRecords = new();
+
+    RenderFragment? modalBodyTemplate;
+
+    private ConfirmDialogSingleButton singleButtonConfirmDialog = new();
+
+    private string manageFilesPageUri = "/managefiles";
+
+    protected override async void OnAfterRender(bool firstTime)
+    {
+        if (!File.Exists(TheAppConfiguration.IISSiteSelectedLogFile.FilePath))
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Inexisting selection", msg1Arg: $"The selected file {TheAppConfiguration.IISSiteSelectedLogFile.FilePath} doesn't exist on the site or ISS_ISURS have no access");
+
+            NavigationManager.NavigateTo(manageFilesPageUri, forceLoad: true);
+        }
+
+        if (firstTime)
+        {
+            if (TheAppConfiguration.IISSiteSelectedLogFile.FileName != null && TheAppConfiguration.IISSiteSelectedLogFile.FileName != "")
+            {
+                try
+                {
+                    iisLogRecords = new IISLogRecords(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
+                }
+
+                catch (Exception e)
+                {
+                    await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "One unexpected error occured while loading file content", msg1Arg: e.Message);
+                }
+
+                startDate = TheAppConfiguration.IISSiteSelectedLogFile.StartDate;
+                endDate = TheAppConfiguration.IISSiteSelectedLogFile.EndDate;
+                startTime = TheAppConfiguration.IISSiteSelectedLogFile.StartTime;
+                endTime = TheAppConfiguration.IISSiteSelectedLogFile.EndTime;
+
+                StateHasChanged();
+            }
+            else
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Internal error", msg1Arg: "No log file name for selected file, please advice the programmer !!!!");
+            }
+        }
+    }
+
+    private async Task<GridDataProviderResult<IISLogRecord>> LogRecordsDataProvider(GridDataProviderRequest<IISLogRecord> request)
+    {
+        return await Task.FromResult(request.ApplyTo(iisLogRecords));
+    }
+
+    private async Task OnRowClick(GridRowEventArgs<IISLogRecord> args)
+    {
+        IISLogRecord iisLogRecord = args.Item;
+        Type type = iisLogRecord.GetType();
+
+        // Construction dynamique du RenderFragment pour afficher les propriétés
+        modalBodyTemplate = builder =>
+        {
+            int seq = 0;
+            foreach (PropertyInfo property in typeof(IISLogRecord).GetProperties())
+            {
+                builder.OpenElement(seq++, "p");
+                builder.OpenElement(seq++, "strong");
+                builder.AddContent(seq++, property.Name + " :");
+                builder.CloseElement(); // strong
+                builder.AddContent(seq++, " " + (property.GetValue(iisLogRecord)?.ToString() ?? string.Empty));
+
+                if (property.GetCustomAttribute<DB_ElementName>() != null)
+                {
+                    builder.OpenElement(seq++, "strong");
+                    DB_ElementName? elementNameAttribute = property.GetCustomAttribute<DB_ElementName>();
+                    builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
+                    builder.CloseElement(); // strong
+                }
+                builder.CloseElement(); //p
+            }
+        };
+
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await modal.HideAsync();
+    }
+
+    private async void DeleteTheFileButtonClicked()
+    {
+        try
+        {
+            File.Delete(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
+            NavigationManager.NavigateTo(manageFilesPageUri, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error  {ex.Message}");
+        }
+    }
+
+    private async void ExportToCsvButtonClicked()
+    {
+        try
+        {
+            string csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", ".csv");
+            string csvData;
+            IISLogRecords iisLogRecords = new IISLogRecords(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
+            if (iisLogRecords.Count() > 0)
+            {
+                csvData = iisLogRecords[0].GetLogRecordHeaderCSVString();
+            }
+            else
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File empty", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} doesn't contain any records !");
+                return;
+            }
+
+            foreach (IISLogRecord iisLogRecord in iisLogRecords)
+            {
+                csvData += iisLogRecord.GetLogRecordValuesCSVString() + "\r\n"; ;
+            }
+
+            // SaveFile will return before the file is written, as it is waiting for user action
+            await JS.InvokeAsync<object>("SaveToFile_SaveFileToDownloadFolder", csvFileName, csvData);
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been exported successfully to {csvFileName}.");
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while exporting", msg1Arg: $"Exception error  {ex.Message}");
+        }
+    }
+}

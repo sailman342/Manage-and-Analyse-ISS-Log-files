@@ -1,0 +1,138 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text
+
+<PageTitle>Home</PageTitle>
+
+@if (TheAppConfiguration == null || !TheAppConfiguration.IsLoaded)
+{
+    <h3>Please load a valid configuration file !</h3>
+    <Callout Heading="No valid configuration has been loaded yet !" Color="CalloutColor.Warning" Type="Info">
+        <p>
+            You need to load a valid configuration file to start managing IIS logs, build it with the solution provided BuildConfigFile.
+        </p>
+        <p>
+            Please use the below button to select and load a configuration file generated with BuildConfigFile.<br />
+            This configuration file will be encoded and stored on the base folder of the Internet site.
+        </p>
+
+        <button style="display:block;width:180px; height:30px;" onclick="document.getElementById('getFile').click()">Select config file</button>
+        <InputFile id="getFile" OnChange="LoadFile" style="display:none" single />
+
+    </Callout>
+}
+else
+{
+    if (TheAppConfiguration.IsLoggedIn)
+    {
+        <h3>You are logged in !</h3>
+        <Callout Heading="Already logged in !" Color="CalloutColor.Success" Type="Info">
+            <p>
+                You are already logged in, please proceed to the <a href="/main">main page</a>.
+            </p>
+
+            <p><strong>OR</strong></p>
+
+            <button class="btn btn-warning" Size="ButtonSize.Large" @onclick="LogoutButtonClicked">Logout</button>
+
+        </Callout>
+    }
+    else
+    {
+        <h3>Please log in !</h3>
+        <Callout Heading="Log in !" Color="CalloutColor.Info" Type="Info">
+            <p>
+                You need to be authenticated to access the IIS Logs Manager application.<br />
+                The authentication is based on the configuration file you have loaded.
+            </p>
+            <p>
+                Please log in using the fields and login button below.
+            </p>
+            <p>
+                <label style="align-content:end" for="name">User &#160; &#160; &#160; &#160; :</label>
+                <input id="name" @bind-value="LoginUser" />
+            </p>
+            <p>
+                <label style="align-content:end" for="passwordInput">Password  :</label>
+                <input type="password" placeholder="Password" autocomplete="off" id="passwordInput" @bind-value=LogPassword />
+            </p>
+            <p>
+                <button class="btn btn-primary" Size="ButtonSize.Large" @onclick="LoginButtonClicked">Login</button>
+            </p>
+        </Callout>
+    }
+}
+
+<ConfirmDialogSingleButton @ref="theSingleButtonConfirmDialog" />
+
+@code {
+
+    public string LoginUser { get; set; } = string.Empty;
+    public string LogPassword { get; set; } = string.Empty;
+
+    private ConfirmDialogSingleButton theSingleButtonConfirmDialog = new();
+
+    protected override void OnParametersSet()
+    {
+        if (TheAppConfiguration == null || !TheAppConfiguration.IsLoaded || !TheAppConfiguration.IsLoggedIn)
+        {
+            TheAppConfiguration = GetAppConfig();            
+        }
+
+        base.OnParametersSet();
+    }
+    private void LogoutButtonClicked()
+    {
+        TheAppConfiguration = new();
+        string mainPageUri = "/";
+        NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
+    }
+
+    private async Task LoginButtonClicked()
+    {
+        if (LoginUser == TheAppConfiguration.AdminLogin && LogPassword == TheAppConfiguration.AdminPassword)    
+        {
+            TheAppConfiguration.IsLoggedIn = true;
+            string mainPageUri = "/siteselection";
+            NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
+        }
+        else
+        {
+            await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Login failed", msg1Arg: "Invalid username or password !");
+        }
+    }
+
+
+    private async void LoadFile(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount > 0 && e.File != null)
+        {
+            IBrowserFile file = e.File;
+            if (file.Size > 0)
+            {
+                string result = await CopyAppConfigFileToBaseDirectory(file);
+                if (result == "Succes")
+                {
+                    // back and forth should work :-)
+                    TheAppConfiguration = GetAppConfig();
+                    await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: "Config file load succeeded", msg1Arg: "Configuration file successfully loaded ");
+                    string mainPageUri = "/";
+                    NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
+                }
+                else
+                {
+                    await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "Error loading configuration file : " + result);
+                }
+            }
+            else
+            {
+                await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "Selected file is empty !");
+            }
+        }
+        else
+        {
+            await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "No file was choosen !");
+        }
+    }
+}
+

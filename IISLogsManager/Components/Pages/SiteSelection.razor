@@ -1,0 +1,93 @@
+﻿@page "/siteselection"
+
+<PageTitle>Site selection</PageTitle>
+
+<center><h3>Select the IIS site to work with</h3></center>
+
+<Callout Heading="Select a log file to analyse" Color="CalloutColor.Info" Type="Info">
+    <p>
+        Please select a subdirectory of @TheAppConfiguration.LogsRootDirectory as IIS log files subdirectory to work with by clicking on the associated blue button.
+    </p>
+</Callout>
+
+
+
+<div style="display:flex;flex-direction:row">
+
+    <div style="margin:10px;display:flex;text-align:left;width:50%;flex-direction:column">
+        <h3>Existing directories on the site IIS logs root</h3>
+        @foreach (string dir in directoriesList)
+        {
+            <p>@dir</p>
+        }
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:50%;flex-direction:column">
+        <h3>Available IIS Sites in the config file</h3>
+        @foreach (IISSite site in TheAppConfiguration.IISSites.Sites)
+        {
+            <p>
+                @if (!Directory.Exists(Path.Combine(TheAppConfiguration.LogsRootDirectory, site.LogSubFolder)))
+                {
+                    <span style="color:red">@site.LogSubFolder The log subfolder for this site does not exist on the file system.</span>
+                }
+                else
+                {
+                    <Button id="@site.LogSubFolder" class="btn btn-primary" Size="ButtonSize.Medium" @onclick="((args) => SiteSelectedButtonClicked(args, site))">@site.LogSubFolder</Button>
+                    <label style="align-content:start" for="@site.LogSubFolder">@site.ID <strong>@site.DomainName</strong> @site.LogSubFolder</label>
+                }
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    private IISSite selectedSite = new();
+    private List<string> directoriesList = [];
+
+    protected override async void OnParametersSet()
+    {
+        /* don't override existing config if user intends to come back
+        *
+        *         TheAppConfiguration.IISSiteLogSubFolder = "";
+        *         TheAppConfiguration.IISSiteSelected = false;
+        *
+        */
+
+
+        directoriesList = [];
+
+        if (Directory.Exists(TheAppConfiguration.LogsRootDirectory))
+        {
+            directoriesList = Directory.EnumerateDirectories(TheAppConfiguration.LogsRootDirectory).ToList<string>();
+
+            directoriesList.Sort();
+            for (int index = 0; index < directoriesList.Count(); index++)
+            {
+                string dir = directoriesList[index].Substring(TheAppConfiguration.LogsRootDirectory.Trim().Length);
+                directoriesList[index] = $"{dir} IS NOT in the configuration file";
+                foreach (IISSite site in TheAppConfiguration.IISSites.Sites)
+                {
+                    if (dir.Trim().ToLower() == site.LogSubFolder.Trim().ToLower())
+                    {
+                        directoriesList[index] = $"{dir} IS in the configuration file";
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            directoriesList.Add("The IIS logs root directory does not exist.");
+        }
+    }
+
+    private void SiteSelectedButtonClicked(EventArgs eventArgs, IISSite site)
+    {
+        TheAppConfiguration.IISSiteSelected = true;
+        TheAppConfiguration.IISSiteLogSubFolderName = site.LogSubFolder;
+        TheAppConfiguration.IISSiteLogSubFolderPath = Path.Combine(TheAppConfiguration.LogsRootDirectory, TheAppConfiguration.IISSiteLogSubFolderName).Replace("\\\\", "\\");
+        TheAppConfiguration.IISSiteID = site.ID;
+        TheAppConfiguration.IISSiteDomainName = site.DomainName;
+        NavigationManager.NavigateTo($"/managefiles", forceLoad: true);
+    }
+}

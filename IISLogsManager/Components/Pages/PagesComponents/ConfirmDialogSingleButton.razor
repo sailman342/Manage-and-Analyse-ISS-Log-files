@@ -1,0 +1,56 @@
+﻿
+@using Microsoft.AspNetCore.Mvc.Rendering;
+
+<ConfirmDialog @ref="TheConfirmDialog" />
+
+@code {
+
+    public ConfirmDialog TheConfirmDialog { get; set; } = default!;
+    [Parameter]
+    public string Title { get; set; } = "Title";
+    [Parameter]
+    public string Message1 { get; set; } = "message 1";
+    [Parameter]
+    public string Message2 { get; set; } = "message 2";
+    [Parameter]
+    public string ButtonText { get; set; } = "OK";
+    [Parameter]
+    public ButtonColor ButtonColor { get; set; } = ButtonColor.Primary;
+
+    public async Task ShowAsync()
+    {
+        // Update the fields !
+
+        ConfirmDialogOptions options = new ConfirmDialogOptions
+            {
+                YesButtonText = ButtonText,
+                YesButtonColor = ButtonColor,
+                NoButtonText = "",
+                NoButtonColor = ButtonColor.Info
+            };
+
+        bool confirmation = await TheConfirmDialog.ShowAsync(
+                title: Title,
+                message1: Message1,
+                message2: Message2,
+                confirmDialogOptions: options);
+    }
+
+    public async Task ShowAsync(ButtonColor buttonColorArg, string titleArg, string msg1Arg, string msg2Arg = "", string okButtonTextArg = "OK")
+    {
+        ConfirmDialogOptions options = new ConfirmDialogOptions
+            {
+                YesButtonText = okButtonTextArg,
+                YesButtonColor = buttonColorArg,
+                NoButtonText = "",
+                NoButtonColor = ButtonColor.None
+            };
+
+        bool confirmation  = await TheConfirmDialog.ShowAsync(
+                title: titleArg,
+                message1: msg1Arg,
+                message2: msg2Arg,
+                confirmDialogOptions: options);
+
+    }
+}

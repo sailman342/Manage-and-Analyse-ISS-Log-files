@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BuildConfigFile/BuildConfigFile.csproj" />
+  <Project Path="IISLogsManager/IISLogsManager.csproj" />
+</Solution>

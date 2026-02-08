@@ -1,0 +1,63 @@
+﻿@inherits LayoutComponentBase
+
+<BlazorBootstrapLayout StickyHeader="true">
+    <HeaderSection>
+        <ThemeSwitcher Class="ps-3 ps-lg-2" />
+    </HeaderSection>
+
+    <SidebarSection>
+        <Sidebar2 Href="/"
+                  ImageSrc="https://demos.blazorbootstrap.com/images/logo/logo-white.svg"
+                  Title="IISLogsManager"
+                  BadgeText=@version
+                  DataProvider="Sidebar2DataProvider"
+                  WidthUnit="Unit.Px" />
+    </SidebarSection>
+
+    <ContentSection>
+        @Body
+    </ContentSection>
+
+    <FooterSection>
+        Footer links...
+    </FooterSection>
+</BlazorBootstrapLayout>
+
+@code {
+    private IEnumerable<NavItem> navItems = default!;
+
+    private string version = typeof(NavMenu).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
+
+    private async Task<Sidebar2DataProviderResult> Sidebar2DataProvider(Sidebar2DataProviderRequest request)
+    {
+        if (navItems is null)
+            navItems = GetNavItems();
+
+        return await Task.FromResult(request.ApplyTo(navItems));
+    }
+
+    private IEnumerable<NavItem> GetNavItems()
+    {
+        int id = 1;
+        navItems = new List<NavItem>
+                   {
+                       new NavItem { Id = id++.ToString(), Href = "/", IconName = IconName.HouseDoorFill, Text = "Home", Match=NavLinkMatch.All},
+                   };
+
+        if (TheAppConfiguration.IsLoaded && TheAppConfiguration.IsLoggedIn)
+        {
+            navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/siteselection", IconName = IconName.ListUl, Text = "Site selection" });
+            if (TheAppConfiguration.IISSiteSelected)
+            {
+                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/managefiles", IconName = IconName.ListUl, Text = "Manage files" });
+                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/database", IconName = IconName.Database, Text = "DataBase" });
+            }
+
+
+            navItems = navItems.Append(new NavItem { Id = "4", Href = "/settings", IconName = IconName.GearFill, Text = "Settings" });
+        }
+
+        return navItems;
+    }
+}
+

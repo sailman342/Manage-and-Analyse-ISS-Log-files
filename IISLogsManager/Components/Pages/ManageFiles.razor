@@ -1,0 +1,497 @@
+﻿@page "/managefiles"
+@using System.Reflection
+@using IISLogsManager.Database
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>Manage log files</PageTitle>
+
+<h3>Manage Log Files</h3>
+
+<Callout Heading="Manage Log Files !" Color="CalloutColor.Info" Type="Info">
+    <p>
+        List of the log files in the directory @TheAppConfiguration.IISSiteLogSubFolderPath<br />
+        For the Internet site @TheAppConfiguration.IISSiteDomainName
+    </p>
+    <p>
+        Please click on a file row to see its properties and actions you can perform on it.
+    </p>
+    <p>
+        You can also mark files and then perform actions on all marked files at once (merge, delete).
+    </p>
+    <p>
+        You can merge log files by marking them and then clicking on the "Merge all marked files" button. The merged file will be created in the same directory with a name that indicates the range of merged files.
+    </p>
+    <p>
+        You can also mark inividually some files and optionnally click mark the zone to mark all files between the first and the last selected files (inclusive).
+    </p>
+</Callout>
+
+
+
+<Progress Class="mb-3">
+    <ProgressBar @ref="progressBar" />
+</Progress>
+
+<div style="display:flex;width:100%;flex-direction:row">
+        <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="UnMarkAllFiles">UnMark all</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkAllFiles">Mark all files</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkAllLogFiles">Mark all log files</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkAllMergedFiles">Mark all _Merged files</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+        <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkTheZone">Mark the zone</Button>
+    </div>
+</div>
+<Spinner Class="me-3" Type="SpinnerType.Grow" Color="SpinnerColor.Primary" Visible="@spinnerVisible" />
+<div style="display:flex;width:100%;flex-direction:row">
+    <div style="margin:10px;display:flex;text-align:left;width:33%;flex-direction:column">
+        <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MergeAllMarkedFiles">Merge all marked files</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:33%;flex-direction:column">
+        <Button Color="ButtonColor.Success" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="ExportToCsvAllMarkedFilesButtonClicked">Export all marked To single CSV file</Button>
+    </div>
+    <div style="margin:10px;display:flex;text-align:left;width:33%;flex-direction:column">
+        <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="DeleteAllMarkedFiles">Delete all marked files</Button>
+    </div>
+</div>
+
+<Grid @ref="grid"
+      TItem="IISLogFile"
+      Class="table table-hover table-bordered table-striped"
+      DataProvider="LogFilesRecordsDataProvider"
+      AllowSorting="true"
+      AllowFiltering="true"
+      Responsive="true"
+      HeaderRowCssClass="bg-success text-white border-bottom-0"
+      AllowRowClick="true"
+      ItemsPerPageText="Log files"
+      PaginationItemsTextFormat="{0} - {1} de {2} Log files"
+      PageSize=50
+      PageSizeSelectorVisible="true"
+      PageSizeSelectorItems="@(new int[] {10, 50,  100, 500 , 1000, 10000})"
+      AllowPaging="true"
+      OnRowClick="OnRowClick"
+      RowClass="GetRowColorClass">
+
+    <GridColumn TItem=" IISLogFile" HeaderText="FileName" PropertyName="FileName" SortKeySelector="item => item.FileName">
+        @context.FileName
+    </GridColumn>
+    <GridColumn TItem="IISLogFile" HeaderText="NumLogLines" PropertyName="NumLogLines" SortKeySelector="item => item.NumLogLines">
+        @context.NumLogLines
+    </GridColumn>
+    <GridColumn TItem="IISLogFile" HeaderText="StartDate" PropertyName="StartDate" SortKeySelector="item => item.StartDate">
+        @context.StartDate.ToString("dd-MMM-yyyy")
+    </GridColumn>
+    <GridColumn TItem="IISLogFile" HeaderText="StartTime" PropertyName="StartTime" SortKeySelector="item => item.StartTime">
+        @context.StartTime.ToString("HH:mm:ss")
+    </GridColumn>
+    <GridColumn TItem="IISLogFile" HeaderText="EndDate" PropertyName="EndDate" SortKeySelector="item => item.EndDate">
+        @context.EndDate.ToString("dd-MMM-yyyy")
+    </GridColumn>
+    <GridColumn TItem="IISLogFile" HeaderText="EndTime" PropertyName="EndTime" SortKeySelector="item => item.EndTime">
+        @context.EndTime.ToString("HH:mm:ss")
+    </GridColumn>
+
+</Grid>
+
+<ConfirmDialogSingleButton @ref="singleButtonConfirmDialog" />
+<ConfirmDialogTwoButtons @ref="confirmDialogTwoButtons" />
+
+<Modal @ref="modal" title="Clicked row" Size="ModalSize.Large" IsScrollable="true">
+    <BodyTemplate>
+        @modalBodyTemplate
+    </BodyTemplate>
+    <FooterTemplate>
+        <div style="display:flex;width:100%;flex-direction:row">
+
+            <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                <Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="HideModalClick">Annuler/Retour</Button>
+            </div>
+
+            <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="ViewFileClick">Manage/View</Button>
+            </div>
+
+            <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Mark/Unmark</Button>
+            </div>
+
+            <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="DeleteTheFileButtonClicked">Delete</Button>
+            </div>
+
+        </div>
+
+    </FooterTemplate>
+</Modal>
+
+@code {
+
+    public BlazorBootstrap.Grid<IISLogFile> grid = default!;
+    public IISLogFiles iisLogFiles = new();
+
+    private Modal modal = default!;
+    RenderFragment? modalBodyTemplate;
+
+    private ConfirmDialogSingleButton singleButtonConfirmDialog = new();
+    private ConfirmDialogTwoButtons confirmDialogTwoButtons = new();
+
+    private ProgressBar progressBar = new();
+
+    private bool spinnerVisible = false;
+
+    private bool disableAllButtons = false;
+
+    protected override async void OnParametersSet()
+    {
+        TheAppConfiguration.IISSiteSelectedLogFile = new();
+
+        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        Console.WriteLine($"iisLogFiles count : {iisLogFiles.Count()}");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+    }
+
+    private async Task<GridDataProviderResult<IISLogFile>> LogFilesRecordsDataProvider(GridDataProviderRequest<IISLogFile> request)
+    {
+        return await Task.FromResult(request.ApplyTo(iisLogFiles));
+    }
+
+    private async Task OnRowClick(GridRowEventArgs<IISLogFile> args)
+    {
+        IISLogFile iisLogFile = args.Item;
+        TheAppConfiguration.IISSiteSelectedLogFile = iisLogFile;
+
+        Type type = iisLogFile.GetType();
+        PropertyInfo[] properties = type.GetProperties();
+
+        // Construction dynamique du RenderFragment pour afficher les propriétés
+        modalBodyTemplate = builder =>
+        {
+            int seq = 0;
+            foreach (PropertyInfo property in typeof(IISLogFile).GetProperties())
+            {
+                builder.OpenElement(seq++, "p");
+                builder.OpenElement(seq++, "strong");
+                builder.AddContent(seq++, property.Name + " :");
+                builder.CloseElement(); // strong
+                builder.AddContent(seq++, " " + (property.GetValue(iisLogFile)?.ToString() ?? string.Empty));
+
+                if (property.GetCustomAttribute<DB_ElementName>() != null)
+                {
+                    builder.OpenElement(seq++, "strong");
+                    DB_ElementName? elementNameAttribute = property.GetCustomAttribute<DB_ElementName>();
+                    builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
+                    builder.CloseElement(); // strong
+                }
+                builder.CloseElement(); //p
+            }
+        };
+
+        await modal.ShowAsync();
+    }
+
+    private async Task ViewFileClick()
+    {
+        NavigationManager.NavigateTo($"/logsviewer", forceLoad: true);
+    }
+
+    private async void MarkAllFiles()
+    {
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            logFile.IsMarked = true;
+        }
+    }
+
+    private async void MarkAllLogFiles()
+    {
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            if (!logFile.FileName.ToLower().Contains("_merged"))
+            {
+                logFile.IsMarked = true;
+            }
+        }
+    }
+
+    private async void MarkAllMergedFiles()
+    {
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            if (logFile.FileName.ToLower().Contains("_merged"))
+            {
+                logFile.IsMarked = true;
+            }
+        }
+    }
+
+    private async void UnMarkAllFiles()
+    {
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            logFile.IsMarked = false;
+        }
+    }
+
+    private async void MarkTheZone()
+    {
+
+        IISLogFile lastFile = default!;
+        int foundMarkedFile = 0;
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            if (logFile.IsMarked == true)
+            {
+                foundMarkedFile++;
+                lastFile = logFile;
+            }
+        }
+        if (foundMarkedFile < 2)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Too little selected", msg1Arg: $"You selected only {foundMarkedFile} instaed of minimum 2, please mark additional files !");
+            return;
+        }
+
+        bool firstSelectedFileFound = false;
+        foreach (IISLogFile logFile in iisLogFiles)
+        {
+            if (logFile == lastFile)
+            {
+                return;
+            }
+
+            if (logFile.IsMarked)
+            {
+                if (!firstSelectedFileFound)
+                {
+                    firstSelectedFileFound = true;
+                }
+            }
+            else if (firstSelectedFileFound)
+            {
+                logFile.IsMarked = true;
+            }
+        }
+    }
+
+    private async void MergeAllMarkedFiles()
+    {
+        try
+        {
+            progressBar.SetWidth(0.0);
+            IISLogFiles filesToMerge = iisLogFiles.GetMarkedFiles();
+
+            if (filesToMerge.Count() == 0)
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"No marked files found", msg1Arg: "No files were found to be merged.");
+                return;
+            }
+
+            filesToMerge.Sort((x, y) => x.FileName.CompareTo(y.FileName));
+
+            string fileName1 = filesToMerge.First().FileName.ToLower();
+            string fileName2 = filesToMerge.Last().FileName.ToLower();
+            string outputFileName = fileName1.Replace(".log", "") + "_TO_" + fileName2.Replace(".log", "") + "_Merged.log";
+
+            string outputFilePath = Path.Combine(TheAppConfiguration.IISSiteLogSubFolderPath, outputFileName);
+
+            //await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"{files.Length} Files will be merged", msg1Arg: $"Files will be merged into {outputFilePath}");
+
+            using (StreamWriter writer = new StreamWriter(outputFilePath))
+            {
+                string? line;
+                int index = 0;
+                double totalFiles = filesToMerge.Count();
+                foreach (IISLogFile markedFile in filesToMerge)
+                {
+                    progressBar.SetWidth(++index * 100.0 / totalFiles);
+
+                    using (StreamReader reader = new StreamReader(markedFile.FilePath))
+                    {
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            writer.WriteLine(line);
+                        }
+                    }
+                }
+            }
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"{filesToMerge.Count()} Files merged", msg1Arg: $"Files merged successfully into {outputFileName}");
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while merging", msg1Arg: $"Exception error  {ex.Message}");
+        }
+
+        progressBar.SetWidth(0.0);
+        // include the new file if any
+        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        UnMarkAllFiles();
+        await grid.RefreshDataAsync();
+        StateHasChanged();
+    }
+
+    private async void ExportToCsvAllMarkedFilesButtonClicked()
+    {
+        spinnerVisible = true;
+        disableAllButtons = true;
+        //progressBar.SetWidth(0.0);
+        //progressBar.SetLabel($"{progressBar.GetWidth()}%");
+        StateHasChanged();
+        Task.Delay(1).Wait(10); // to allow UI to update
+
+        progressBar.SetWidth(0.0);
+        IISLogFiles filesToExportToCsv = iisLogFiles.GetMarkedFiles();
+
+        if (filesToExportToCsv.Count() == 0)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"No marked files found", msg1Arg: "No files were found to be exported.");
+            spinnerVisible = false;
+            disableAllButtons = false;
+            return;
+        }
+
+        string csvFileName = $"LogsExport-{DateTime.Now.ToString("dd-MM-yyyy")}-{DateTime.Now.ToString("HH-mm-ss-ff")}";
+        string csvData = "";
+        bool dataFound = false;
+        foreach (IISLogFile fileToExport in filesToExportToCsv)
+        {
+            IISLogRecords iisLogRecords = new IISLogRecords(fileToExport.FilePath);
+            csvData += iisLogRecords[0].GetLogRecordHeaderCSVString();
+
+            if (iisLogRecords.Count() > 0)
+            {
+                dataFound = true;
+                try
+                {
+
+                    //double recNum = 1.0;
+                    foreach (IISLogRecord iisLogRecord in iisLogRecords)
+                    {
+                        csvData += iisLogRecord.GetLogRecordValuesCSVString() + "\r\n";
+                        //progressBar.SetWidth(recNum++ / iisLogRecords.Count());
+                        //progressBar.SetLabel($"{progressBar.GetWidth()}%");
+                        StateHasChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while exporting", msg1Arg: $"Exception error  {ex.Message}");
+                }
+            }
+        }
+        if (dataFound)
+        {
+            // SaveFile will return before the file is written, as it is waiting for user action
+            await JS.InvokeAsync<object>("SaveToFile_SaveFileToDownloadFolder", csvFileName, csvData);
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The marked files have been exported successfully to {csvFileName}.");
+        }
+        else
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Files empty", msg1Arg: $"The marked files doesn't contain any records !");
+        }
+
+        spinnerVisible = false;
+        disableAllButtons = false;
+        //progressBar.SetWidth(0.0);
+        //progressBar.SetLabel($"{progressBar.GetWidth()}%");
+        StateHasChanged();
+    }
+
+    private async void DeleteAllMarkedFiles()
+    {
+        try
+        {
+            IISLogFiles markedFiles = iisLogFiles.GetMarkedFiles();
+            if (markedFiles.Count() == 0)
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"No marked files found", msg1Arg: "No files were found to be deleted.");
+                return;
+            }
+
+            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Effacer", $"Delete all marked files", $"Do you want to delete all marked files from {TheAppConfiguration.IISSiteLogSubFolderPath} ?");
+            if (confirm)
+            {
+                int cnt = 0;
+                foreach (IISLogFile markedFile in markedFiles)
+                {
+                    cnt++;
+                    File.Delete(markedFile.FilePath);
+                }
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"{cnt} files deleted", msg1Arg: $"All marked files have been deleted successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
+        }
+
+        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        await grid.RefreshDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task HideModalClick()
+    {
+        await modal.HideAsync();
+        modal.Dispose();
+    }
+
+    private async void MarkUnmarkFileClick()
+    {
+        if (TheAppConfiguration.IISSiteSelectedLogFile.IsMarked)
+        {
+            TheAppConfiguration.IISSiteSelectedLogFile.IsMarked = false;
+        }
+        else
+        {
+            TheAppConfiguration.IISSiteSelectedLogFile.IsMarked = true;
+        }
+        await HideModalClick();
+        StateHasChanged();
+    }
+
+    private async void DeleteTheFileButtonClicked()
+    {
+        try
+        {
+            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Delete", $"Delete {TheAppConfiguration.IISSiteSelectedLogFile.FileName}", $"Press OK to delete the file {TheAppConfiguration.IISSiteSelectedLogFile.FileName}", Button1TextArg: "Delete", button1ColorArg: ButtonColor.Danger);
+            if (confirm)
+            {
+                File.Delete(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
+        }
+
+        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        await grid.RefreshDataAsync();
+        await HideModalClick();
+        StateHasChanged();
+    }
+
+    private string GetRowColorClass(IISLogFile toBeColored)
+    {
+        if (toBeColored.IsMarked)
+        {
+            return "table-info";
+        }
+        else
+        {
+            return "";
+        }
+    }
+}
+

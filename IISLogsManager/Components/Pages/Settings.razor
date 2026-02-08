@@ -1,0 +1,66 @@
+﻿@page "/settings"
+
+<PageTitle>Settings</PageTitle>
+
+<h3>Settings/maintenance</h3>
+
+<Callout Heading="Load a new configuration file !" Color="CalloutColor.Info" Type="Info">
+    <p>
+        If you changed the Internet site configuration, you may need to load an updated configuration file to continue managing IIS logs.
+    </p>
+    <p>
+        Please use the below button to select and load a configuration file generated with BuildConfigFile.<br />
+        This configuration file will be encoded and stored on the base folder of the Internet site.<br/>
+        Loading a new configuration file will replace the current configuration and you will need to log in again with the possibly new credencials
+    </p>
+
+    <button style="display:block;width:180px; height:30px;" onclick="document.getElementById('getFile').click()">Select config file</button>
+    <InputFile id="getFile" OnChange="LoadFile" style="display:none" single />
+
+</Callout>
+
+<ConfirmDialogSingleButton @ref="theSingleButtonConfirmDialog" />
+
+@code {
+    private ConfirmDialogSingleButton theSingleButtonConfirmDialog = new();
+
+    private async void LoadFile(InputFileChangeEventArgs e)
+    {
+        // Isloaded = false for now, it will be set to true if the file is loaded successfully
+        // IsLoggedIn = false for now, it will be set to true if the user can log in with the new configuration file
+
+        TheAppConfiguration = new();
+
+        if (e.FileCount > 0 && e.File != null)
+        {
+            IBrowserFile file = e.File;
+            if (file.Size > 0)
+            {
+                string result = await CopyAppConfigFileToBaseDirectory(file);
+                if (result == "Succes")
+                {
+                    // back and forth should work :-)
+                    TheAppConfiguration = GetAppConfig();
+                    await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: "Config file load succeeded", msg1Arg: "Configuration file successfully loaded ");
+
+                    string mainPageUri = "/main";
+                    NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
+                }
+                else
+                {
+                    await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "Error loading configuration file : " + result);
+                }
+            }
+            else
+            {
+                await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "Selected file is empty !");
+            }
+        }
+        else
+        {
+            await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "No file was choosen !");
+        }
+        string homePageUri = "/";
+        NavigationManager.NavigateTo(homePageUri, forceLoad: true);
+    }
+}
