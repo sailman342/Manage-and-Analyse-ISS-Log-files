@@ -45,7 +45,7 @@ namespace IISLogsManager.AppConfig
         public bool IISSiteSelected { get; set; } = false;
         public string IISSiteID { get; set; } = "";
         public string IISSiteLogSubFolderName { get; set; } = "";
-        public string IISSiteLogSubFolderPath  { get; set; } = ""; //TODO replace everywhere
+        public string IISSiteLogSubFolderPath  { get; set; } = ""; // TODO replace everywhere
         public string IISSiteDomainName { get; set; } = "";
 
         public IISLogFile IISSiteSelectedLogFile { get; set; } = new();

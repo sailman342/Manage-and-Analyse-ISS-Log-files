@@ -17,38 +17,81 @@ namespace IISLogsManager.DataBase
             if (File.Exists(filePath))
             {
                 // Store each line in array of strings
-                string[] lines = File.ReadAllLines(filePath);
+                List<string> lines = new();
+                try
+                {
+
+                    // Open file in read-only mode, allowing shared read/write access
+                    using (FileStream fs = new FileStream(
+                        filePath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite))
+
+                    using (StreamReader reader = new StreamReader(fs))
+                    {
+                        string? line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            lines.Add(line);
+                        }
+                    }
+                }
+                catch (FileNotFoundException)
+                {
+                    Console.WriteLine("Error: File not found.");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    Console.WriteLine("Error: Access denied. Check file permissions.");
+                }
+                catch (IOException ex)
+                {
+                    Console.WriteLine($"I/O Error: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected error: {ex.Message}");
+                }
+
                 int lineNumber = 0;
                 string definitions = "";
                 foreach (string ln in lines)
                 {
-                    lineNumber++;
-                    if(ln.StartsWith("#Fields:"))
+                    IISLogRecord iisLogRecord = new();
+                    try
                     {
-                        definitions = ln;
+                        lineNumber++;
+                        if (ln.StartsWith("#Fields:"))
+                        {
+                            definitions = ln;
+                        }
+
+                        if (!ln.StartsWith('#'))
+                        {
+
+
+                            string[] splittedLine = ln.Split(" ");
+
+                            // Set file location properties
+                            iisLogRecord.LineNumber = lineNumber;
+                            iisLogRecord.OriginFilePath = filePath;
+                            iisLogRecord.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
+                            iisLogRecord.DomainName = TheAppConfiguration.IISSiteDomainName;
+                            iisLogRecord.DomainID = TheAppConfiguration.IISSiteID;
+
+                            // Parse the log line to set log record properties
+                            iisLogRecord.ParseFromLogLine(splittedLine, definitions);
+
+                            this.Add(iisLogRecord);
+                        }
                     }
-
-                    if (!ln.StartsWith('#'))
+                    catch (Exception ex)
                     {
-                        IISLogRecord iisLogRecord = new();
-
-                        string[] splittedLine = ln.Split(" ");
-
-                        // Set file location properties
-                        iisLogRecord.LineNumber=lineNumber;
-                        iisLogRecord.OriginFilePath = filePath;
-                        iisLogRecord.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
-                        iisLogRecord.DomainName = TheAppConfiguration.IISSiteDomainName;
-                        iisLogRecord.DomainID = TheAppConfiguration.IISSiteID;
-
-                        // Parse the log line to set log record properties
-                        iisLogRecord.ParseFromLogLine(splittedLine, definitions);
-
-                        this.Add(iisLogRecord);
+                        Console.WriteLine($"Error parsing line {lineNumber} in file {filePath}: {ex.Message}");
                     }
                 }
             }
-
         }
     }
 }

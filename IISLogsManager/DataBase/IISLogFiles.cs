@@ -16,29 +16,72 @@ namespace IISLogsManager.DataBase
             this.Clear();
             if (Directory.Exists(logsFolderPath))
             {
-
                 List<string> txtFiles = [.. Directory.EnumerateFiles(logsFolderPath, "*.log")];
                 txtFiles.Sort();
                 foreach (string filePath in txtFiles)
                 {
-                    if (File.Exists(filePath))
+                    List<string> lines = new();
+
+                    // Create a new IISLogFile object and set its properties based on the file information
+                    IISLogFile iisLogFile = new();
+
+                    iisLogFile.DomainName = TheAppConfiguration.IISSiteDomainName;
+                    iisLogFile.DomainID = TheAppConfiguration.IISSiteID;
+                    iisLogFile.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
+                    iisLogFile.FilePath = filePath;
+                    iisLogFile.FileName = Path.GetFileName(filePath);
+
+                    try
                     {
-                        IISLogFile IISLogFile = new();
+                        //Access violation can occur when workking with the files of the test site where this app is located (used by other process)!
+                        // should be available same if used by another process !
+                        iisLogFile.FileInfo = new FileInfo(filePath);
 
-                        //TODO Verify if reading first and last line would suffice instead of reading all lines and parsing them all to get the first and last date and time of the log file ! (if log files are sorted by name with date and time, it should be ok !)
+                        // Open file in read-only mode, allowing shared read/write access
+                        using (FileStream fs = new FileStream(
+                            filePath,
+                            FileMode.Open,
+                            FileAccess.Read,
+                            FileShare.ReadWrite))
 
-                        // Store each line in array of strings
-                        string[] lines = File.ReadAllLines(filePath);
-                        int lineNumber = 0;
-                        string[] defParts = [];
+                        using (StreamReader reader = new StreamReader(fs))
+                        {
+                            string? line;
+                            while ((line = reader.ReadLine()) != null)
+                            {
+                                lines.Add(line);
+                            }
+                        }
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        Console.WriteLine("Error: File not found.");
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        Console.WriteLine("Error: Access denied. Check file permissions.");
+                    }
+                    catch (IOException ex)
+                    {
+                        Console.WriteLine($"I/O Error: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Unexpected error: {ex.Message}");
+                    }
 
-                        IISLogFile.DomainName = TheAppConfiguration.IISSiteDomainName;
-                        IISLogFile.DomainID = TheAppConfiguration.IISSiteID;
-                        IISLogFile.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
-                        IISLogFile.FilePath = filePath;
-                        IISLogFile.FileName = Path.GetFileName(filePath);
+                    // Read the log file and parse its content to set the StartDate, StartTime, EndDate, EndTime, and NumLogLines properties
 
-                        foreach (string ln in lines)
+                    // TODO Verify if reading first and last line would suffice instead of reading all lines and parsing them all to get the first and last date and time of the log file ! (if log files are sorted by name with date and time, it should be ok !)
+
+                    // Store each line in array of strings
+
+                    int lineNumber = 0;
+                    string[] defParts = [];
+
+                    foreach (string ln in lines)
+                    {
+                        try
                         {
 
                             if (ln.StartsWith("#Fields:"))
@@ -47,30 +90,35 @@ namespace IISLogsManager.DataBase
                             }
 
                             if (!ln.StartsWith('#'))
-                            {                            
+                            {
                                 lineNumber++;
                                 // Parse the log line to set log record properties
                                 (DateOnly Date, TimeOnly Time) = ParseFromLogLine(ln.Split(' '), defParts);
                                 // IISLogFile properties date and time are set to min and max values !
-                                if (IISLogFile.StartDate > Date || (IISLogFile.StartDate == Date && IISLogFile.StartTime > Time))
+                                if (iisLogFile.StartDate > Date || (iisLogFile.StartDate == Date && iisLogFile.StartTime > Time))
                                 {
-                                    IISLogFile.StartDate = Date;
-                                    IISLogFile.StartTime = Time;
+                                    iisLogFile.StartDate = Date;
+                                    iisLogFile.StartTime = Time;
                                 }
-                                if (IISLogFile.EndDate < Date || (IISLogFile.EndDate == Date && IISLogFile.EndTime < Time))
+                                if (iisLogFile.EndDate < Date || (iisLogFile.EndDate == Date && iisLogFile.EndTime < Time))
                                 {
-                                    IISLogFile.EndDate = Date;
-                                    IISLogFile.EndTime = Time;
+                                    iisLogFile.EndDate = Date;
+                                    iisLogFile.EndTime = Time;
                                 }
                             }
 
                         }
-                        IISLogFile.NumLogLines = lineNumber;
-                        this.Add(IISLogFile);
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error parsing line {ln} in file {filePath}: {ex.Message}");
+                        }
+                        iisLogFile.NumLogLines = lineNumber;
                     }
+                    this.Add(iisLogFile);
                 }
             }
         }
+
 
         public IISLogFiles GetMarkedFiles()
         {

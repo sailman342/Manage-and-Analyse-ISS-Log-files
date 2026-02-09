@@ -2,6 +2,7 @@
 @using System.Reflection
 @using IISLogsManager.Database
 @using Microsoft.AspNetCore.Components
+@using System.Globalization
 
 <PageTitle>Manage log files</PageTitle>
 
@@ -187,22 +188,63 @@
         modalBodyTemplate = builder =>
         {
             int seq = 0;
+            // Create a custom NumberFormatInfo
+            NumberFormatInfo nfi = (NumberFormatInfo)CultureInfo.InvariantCulture.NumberFormat.Clone();
+            nfi.NumberGroupSeparator = "'"; // Use single quote as thousands separator
+            nfi.NumberGroupSizes = new[] { 3 }; // Group digits in sets of 3
+
             foreach (PropertyInfo property in typeof(IISLogFile).GetProperties())
             {
-                builder.OpenElement(seq++, "p");
-                builder.OpenElement(seq++, "strong");
-                builder.AddContent(seq++, property.Name + " :");
-                builder.CloseElement(); // strong
-                builder.AddContent(seq++, " " + (property.GetValue(iisLogFile)?.ToString() ?? string.Empty));
-
-                if (property.GetCustomAttribute<DB_ElementName>() != null)
+                if (property.Name == "FileInfo")
                 {
+                    builder.OpenElement(seq++, "p");
                     builder.OpenElement(seq++, "strong");
-                    DB_ElementName? elementNameAttribute = property.GetCustomAttribute<DB_ElementName>();
-                    builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
+                    builder.AddContent(seq++, "FileInfo-Path" + " :");
                     builder.CloseElement(); // strong
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.FullName );
+                    builder.CloseElement(); //p
+
+                    builder.OpenElement(seq++, "p");
+                    builder.OpenElement(seq++, "strong");
+                    builder.AddContent(seq++, "FileInfo-CreationDate" + " :");
+                    builder.CloseElement(); // strong
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.CreationTime );
+                    builder.CloseElement(); //p
+
+                    builder.OpenElement(seq++, "p");
+                    builder.OpenElement(seq++, "strong");
+                    builder.AddContent(seq++, "FileInfo-Size" + " :");
+                    builder.CloseElement(); // strong
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.Length.ToString("#,0",nfi) + " Bytes");
+                    builder.CloseElement(); //p
+
+                    builder.OpenElement(seq++, "p");
+                    builder.OpenElement(seq++, "strong");
+                    builder.AddContent(seq++, "FileInfo-Readonly" + " :");
+                    builder.CloseElement(); // strong
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.IsReadOnly );
+                    builder.CloseElement(); //p
                 }
-                builder.CloseElement(); //p
+                else
+                {
+                     builder.OpenElement(seq++, "p");
+                    builder.OpenElement(seq++, "strong");
+
+                    builder.AddContent(seq++, property.Name + " :");
+                    builder.CloseElement(); // strong
+                    builder.AddContent(seq++, " " + (property.GetValue(iisLogFile)?.ToString() ?? string.Empty));
+
+                    if (property.GetCustomAttribute<DB_ElementName>() != null)
+                    {
+                        builder.OpenElement(seq++, "strong");
+                        DB_ElementName? elementNameAttribute = property.GetCustomAttribute<DB_ElementName>();
+                        // Same as property name
+                        //builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementName ?? string.Empty) + " ");
+                        builder.AddContent(seq++, "(" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
+                        builder.CloseElement(); // strong
+                    }
+                    builder.CloseElement(); //p                   
+                }
             }
         };
 

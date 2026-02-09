@@ -68,7 +68,7 @@ Note 2: The W3SVC6 folder is missing on the site
 
 Click on a line to get full info and submenu
 
-<img src="image-20260208140928369.png" alt="image-20260208140928369" style="zoom:50%;" />
+<img src="image-20260209125114506.png" alt="image-20260209125114506" style="zoom:50%;" />
 
 ## 4.5 Manage/view log file (draft)
 
@@ -76,7 +76,7 @@ Click on a line to get full info and submenu
 
 Again, click on a line to get full details
 
-<img src="image-20260208141122003.png" alt="image-20260208141122003" style="zoom:50%;" />
+<img src="image-20260209125420745.png" alt="image-20260209125420745" style="zoom:50%;" />
 
 
 

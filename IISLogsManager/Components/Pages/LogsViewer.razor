@@ -203,7 +203,8 @@
                 {
                     builder.OpenElement(seq++, "strong");
                     DB_ElementName? elementNameAttribute = property.GetCustomAttribute<DB_ElementName>();
-                    builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
+                    builder.AddContent(seq++, " (" + (elementNameAttribute?.ElementName ?? string.Empty) );
+                    builder.AddContent(seq++, " - " + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
                     builder.CloseElement(); // strong
                 }
                 builder.CloseElement(); //p
