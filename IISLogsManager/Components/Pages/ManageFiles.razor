@@ -1,8 +1,10 @@
-﻿@page "/managefiles"
+﻿@page "/managefiles/{UrlContextID}"
+@using System.Globalization
 @using System.Reflection
 @using IISLogsManager.Database
+@using IISLogsManager.ILMAppConfigNameSpace
 @using Microsoft.AspNetCore.Components
-@using System.Globalization
+@using static IISLogsManager.ILMAppConfigNameSpace.ILMAppConfiguration
 
 <PageTitle>Manage log files</PageTitle>
 
@@ -10,8 +12,8 @@
 
 <Callout Heading="Manage Log Files !" Color="CalloutColor.Info" Type="Info">
     <p>
-        List of the log files in the directory @TheAppConfiguration.IISSiteLogSubFolderPath<br />
-        For the Internet site @TheAppConfiguration.IISSiteDomainName
+        List of the log files in the directory @TheILMAppContext.IISSiteLogSubFolderPath<br />
+        For the Internet site @TheILMAppContext.IISSiteDomainName
     </p>
     <p>
         Please click on a file row to see its properties and actions you can perform on it.
@@ -119,7 +121,7 @@
             <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
                 <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="ViewFileClick">Manage/View</Button>
             </div>
-            @if (TheAppConfiguration.IISSiteSelectedLogFile.IsMarked)
+            @if (TheILMAppContext.IISSiteSelectedLogFile.IsMarked)
             {
                 <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
                     <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Unmark</Button>
@@ -143,6 +145,8 @@
 </Modal>
 
 @code {
+    [Parameter]
+    public string UrlContextID { get; set; } = string.Empty;
 
     public BlazorBootstrap.Grid<IISLogFile> grid = default!;
     public IISLogFiles iisLogFiles = new();
@@ -159,16 +163,14 @@
 
     private bool disableAllButtons = false;
 
-    protected override async void OnParametersSet()
-    {
-        TheAppConfiguration.IISSiteSelectedLogFile = new();
+    public ILMAppContext TheILMAppContext { get; set; } = new();
 
-        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+    protected override void OnParametersSet()
+    {
+        TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
+
+        iisLogFiles = new IISLogFiles(TheILMAppContext);
         Console.WriteLine($"iisLogFiles count : {iisLogFiles.Count()}");
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
     }
 
     private async Task<GridDataProviderResult<IISLogFile>> LogFilesRecordsDataProvider(GridDataProviderRequest<IISLogFile> request)
@@ -179,7 +181,7 @@
     private async Task OnRowClick(GridRowEventArgs<IISLogFile> args)
     {
         IISLogFile iisLogFile = args.Item;
-        TheAppConfiguration.IISSiteSelectedLogFile = iisLogFile;
+        TheILMAppContext.IISSiteSelectedLogFile = iisLogFile;
 
         Type type = iisLogFile.GetType();
         PropertyInfo[] properties = type.GetProperties();
@@ -227,7 +229,7 @@
                 }
                 else
                 {
-                     builder.OpenElement(seq++, "p");
+                    builder.OpenElement(seq++, "p");
                     builder.OpenElement(seq++, "strong");
 
                     builder.AddContent(seq++, property.Name + " :");
@@ -253,7 +255,8 @@
 
     private async Task ViewFileClick()
     {
-        NavigationManager.NavigateTo($"/logsviewer", forceLoad: true);
+        ILMAppContextServices.SetILMAppContext(TheILMAppContext, UrlContextID);
+        NavigationManager.NavigateTo($"/logsviewer/{UrlContextID}", forceLoad: true);
     }
 
     private async void MarkAllFiles()
@@ -355,7 +358,7 @@
             string fileName2 = filesToMerge.Last().FileName.ToLower();
             string outputFileName = fileName1.Replace(".log", "") + "_TO_" + fileName2.Replace(".log", "") + "_Merged.log";
 
-            string outputFilePath = Path.Combine(TheAppConfiguration.IISSiteLogSubFolderPath, outputFileName);
+            string outputFilePath = Path.Combine(TheILMAppContext.IISSiteLogSubFolderPath, outputFileName);
 
             //await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"{files.Length} Files will be merged", msg1Arg: $"Files will be merged into {outputFilePath}");
 
@@ -386,7 +389,7 @@
 
         progressBar.SetWidth(0.0);
         // include the new file if any
-        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        iisLogFiles = new IISLogFiles(TheILMAppContext);
         UnMarkAllFiles();
         await grid.RefreshDataAsync();
         StateHasChanged();
@@ -417,7 +420,8 @@
         bool dataFound = false;
         foreach (IISLogFile fileToExport in filesToExportToCsv)
         {
-            IISLogRecords iisLogRecords = new IISLogRecords(fileToExport.FilePath);
+            TheILMAppContext.IISSiteSelectedLogFile = fileToExport;
+            IISLogRecords iisLogRecords = new IISLogRecords(TheILMAppContext);
             csvData += iisLogRecords[0].GetLogRecordHeaderCSVString();
 
             if (iisLogRecords.Count() > 0)
@@ -470,7 +474,7 @@
                 return;
             }
 
-            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Effacer", $"Delete all marked files", $"Do you want to delete all marked files from {TheAppConfiguration.IISSiteLogSubFolderPath} ?");
+            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Effacer", $"Delete all marked files", $"Do you want to delete all marked files from {TheILMAppContext.IISSiteLogSubFolderPath} ?");
             if (confirm)
             {
                 int cnt = 0;
@@ -487,7 +491,7 @@
             await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
         }
 
-        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        iisLogFiles = new IISLogFiles(TheILMAppContext);
         await grid.RefreshDataAsync();
         StateHasChanged();
     }
@@ -500,13 +504,13 @@
 
     private async void MarkUnmarkFileClick()
     {
-        if (TheAppConfiguration.IISSiteSelectedLogFile.IsMarked)
+        if (TheILMAppContext.IISSiteSelectedLogFile.IsMarked)
         {
-            TheAppConfiguration.IISSiteSelectedLogFile.IsMarked = false;
+            TheILMAppContext.IISSiteSelectedLogFile.IsMarked = false;
         }
         else
         {
-            TheAppConfiguration.IISSiteSelectedLogFile.IsMarked = true;
+            TheILMAppContext.IISSiteSelectedLogFile.IsMarked = true;
         }
         await HideModalClick();
         StateHasChanged();
@@ -516,11 +520,11 @@
     {
         try
         {
-            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Delete", $"Delete {TheAppConfiguration.IISSiteSelectedLogFile.FileName}", $"Press OK to delete the file {TheAppConfiguration.IISSiteSelectedLogFile.FileName}", Button1TextArg: "Delete", button1ColorArg: ButtonColor.Danger);
+            bool confirm = await confirmDialogTwoButtons.ShowAsync($"Delete", $"Delete {TheILMAppContext.IISSiteSelectedLogFile.FileName}", $"Press OK to delete the file {TheILMAppContext.IISSiteSelectedLogFile.FileName}", Button1TextArg: "Delete", button1ColorArg: ButtonColor.Danger);
             if (confirm)
             {
-                File.Delete(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
-                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
+                File.Delete(TheILMAppContext.IISSiteSelectedLogFile.FilePath);
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheILMAppContext.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
             }
         }
         catch (Exception ex)
@@ -528,7 +532,7 @@
             await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
         }
 
-        iisLogFiles = new IISLogFiles(TheAppConfiguration.IISSiteLogSubFolderPath);
+        iisLogFiles = new IISLogFiles(TheILMAppContext);
         await grid.RefreshDataAsync();
         await HideModalClick();
         StateHasChanged();

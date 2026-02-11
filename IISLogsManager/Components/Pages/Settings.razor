@@ -1,4 +1,4 @@
-﻿@page "/settings"
+﻿@page "/settings/{UrlContextID}"
 
 <PageTitle>Settings</PageTitle>
 
@@ -10,7 +10,7 @@
     </p>
     <p>
         Please use the below button to select and load a configuration file generated with BuildConfigFile.<br />
-        This configuration file will be encoded and stored on the base folder of the Internet site.<br/>
+        This configuration file will be encoded and stored on the base folder of the Internet site.<br />
         Loading a new configuration file will replace the current configuration and you will need to log in again with the possibly new credencials
     </p>
 
@@ -19,17 +19,32 @@
 
 </Callout>
 
+<button class="btn btn-warning" Size="ButtonSize.Large" @onclick="CleanUpButtonClicked">Clean the singletons services</button>
+
 <ConfirmDialogSingleButton @ref="theSingleButtonConfirmDialog" />
 
-@code {
+@code
+{
+    [Parameter]
+    public string UrlContextID { get; set; } = string.Empty;
+
     private ConfirmDialogSingleButton theSingleButtonConfirmDialog = new();
+
+    public ILMAppContext TheILMAppContext { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
+
+        base.OnParametersSet();
+    }
 
     private async void LoadFile(InputFileChangeEventArgs e)
     {
         // Isloaded = false for now, it will be set to true if the file is loaded successfully
         // IsLoggedIn = false for now, it will be set to true if the user can log in with the new configuration file
-
-        TheAppConfiguration = new();
+        // Don't load the config => false
+        TheILMAppContext = new(loadConfig: false);
 
         if (e.FileCount > 0 && e.File != null)
         {
@@ -40,10 +55,9 @@
                 if (result == "Succes")
                 {
                     // back and forth should work :-)
-                    TheAppConfiguration = GetAppConfig();
                     await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: "Config file load succeeded", msg1Arg: "Configuration file successfully loaded ");
 
-                    string mainPageUri = "/main";
+                    string mainPageUri = "/home";
                     NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
                 }
                 else
@@ -60,6 +74,15 @@
         {
             await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Config file load failed", msg1Arg: "No file was choosen !");
         }
+        string homePageUri = "/";
+        NavigationManager.NavigateTo(homePageUri, forceLoad: true);
+    }
+
+    private async void CleanUpButtonClicked()
+    {
+
+        ILMAppContextServices.DeleteAllILMAppContextRecords();
+        await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: "Clean up done", msg1Arg: "Singleton services have been cleaned up !");
         string homePageUri = "/";
         NavigationManager.NavigateTo(homePageUri, forceLoad: true);
     }

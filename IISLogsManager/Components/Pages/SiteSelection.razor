@@ -1,4 +1,4 @@
-﻿@page "/siteselection"
+﻿@page "/siteselection/{UrlContextID}"
 
 <PageTitle>Site selection</PageTitle>
 
@@ -6,7 +6,7 @@
 
 <Callout Heading="Select a log file to analyse" Color="CalloutColor.Info" Type="Info">
     <p>
-        Please select a subdirectory of @TheAppConfiguration.LogsRootDirectory as IIS log files subdirectory to work with by clicking on the associated blue button.
+        Please select a subdirectory of @TheILMAppContext.ILMAppConfig.LogsRootDirectory as IIS log files subdirectory to work with by clicking on the associated blue button.
     </p>
 </Callout>
 
@@ -23,10 +23,10 @@
     </div>
     <div style="margin:10px;display:flex;text-align:left;width:50%;flex-direction:column">
         <h3>Available IIS Sites in the config file</h3>
-        @foreach (IISSite site in TheAppConfiguration.IISSites.Sites)
+        @foreach (IISSite site in TheILMAppContext.ILMAppConfig.IISSites.Sites)
         {
             <p>
-                @if (!Directory.Exists(Path.Combine(TheAppConfiguration.LogsRootDirectory, site.LogSubFolder)))
+                @if (!Directory.Exists(Path.Combine(TheILMAppContext.ILMAppConfig.LogsRootDirectory, site.LogSubFolder)))
                 {
                     <span style="color:red">@site.LogSubFolder The log subfolder for this site does not exist on the file system.</span>
                 }
@@ -41,8 +41,13 @@
 </div>
 
 @code {
+    [Parameter]
+    public string UrlContextID { get; set; } = string.Empty;
+
     private IISSite selectedSite = new();
     private List<string> directoriesList = [];
+
+    public ILMAppContext TheILMAppContext { get; set; } = new();
 
     protected override async void OnParametersSet()
     {
@@ -53,19 +58,20 @@
         *
         */
 
+        TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
 
         directoriesList = [];
 
-        if (Directory.Exists(TheAppConfiguration.LogsRootDirectory))
+        if (Directory.Exists(TheILMAppContext.ILMAppConfig.LogsRootDirectory))
         {
-            directoriesList = Directory.EnumerateDirectories(TheAppConfiguration.LogsRootDirectory).ToList<string>();
+            directoriesList = Directory.EnumerateDirectories(TheILMAppContext.ILMAppConfig.LogsRootDirectory).ToList<string>();
 
             directoriesList.Sort();
             for (int index = 0; index < directoriesList.Count(); index++)
             {
-                string dir = directoriesList[index].Substring(TheAppConfiguration.LogsRootDirectory.Trim().Length);
+                string dir = directoriesList[index].Substring(TheILMAppContext.ILMAppConfig.LogsRootDirectory.Trim().Length);
                 directoriesList[index] = $"{dir} IS NOT in the configuration file";
-                foreach (IISSite site in TheAppConfiguration.IISSites.Sites)
+                foreach (IISSite site in TheILMAppContext.ILMAppConfig.IISSites.Sites)
                 {
                     if (dir.Trim().ToLower() == site.LogSubFolder.Trim().ToLower())
                     {
@@ -83,11 +89,12 @@
 
     private void SiteSelectedButtonClicked(EventArgs eventArgs, IISSite site)
     {
-        TheAppConfiguration.IISSiteSelected = true;
-        TheAppConfiguration.IISSiteLogSubFolderName = site.LogSubFolder;
-        TheAppConfiguration.IISSiteLogSubFolderPath = Path.Combine(TheAppConfiguration.LogsRootDirectory, TheAppConfiguration.IISSiteLogSubFolderName).Replace("\\\\", "\\");
-        TheAppConfiguration.IISSiteID = site.ID;
-        TheAppConfiguration.IISSiteDomainName = site.DomainName;
-        NavigationManager.NavigateTo($"/managefiles", forceLoad: true);
+        TheILMAppContext.IISSiteSelected = true;
+        TheILMAppContext.IISSiteLogSubFolderName = site.LogSubFolder;
+        TheILMAppContext.IISSiteLogSubFolderPath = Path.Combine(TheILMAppContext.ILMAppConfig.LogsRootDirectory, TheILMAppContext.IISSiteLogSubFolderName).Replace("\\\\", "\\");
+        TheILMAppContext.IISSiteID = site.ID;
+        TheILMAppContext.IISSiteDomainName = site.DomainName;
+        ILMAppContextServices.SetILMAppContext(TheILMAppContext, UrlContextID);
+        NavigationManager.NavigateTo($"/managefiles/{UrlContextID}", forceLoad: true);
     }
 }

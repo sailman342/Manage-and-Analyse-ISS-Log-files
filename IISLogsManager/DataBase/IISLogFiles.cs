@@ -1,6 +1,5 @@
-﻿using IISLogsManager.Database;
-using IISLogsManager.AppConfig;
-using static IISLogsManager.AppConfig.AppConfiguration;
+﻿
+using IISLogsManager.ILMAppConfigNameSpace;
 
 namespace IISLogsManager.DataBase
 {
@@ -11,25 +10,26 @@ namespace IISLogsManager.DataBase
             this.Clear();
         }
 
-        public IISLogFiles(string logsFolderPath)
+        public IISLogFiles(ILMAppContext TheILMAppContext)
         {
             this.Clear();
-            if (Directory.Exists(logsFolderPath))
+            if (Directory.Exists(TheILMAppContext.IISSiteLogSubFolderPath))
             {
-                List<string> txtFiles = [.. Directory.EnumerateFiles(logsFolderPath, "*.log")];
+                List<string> txtFiles = [.. Directory.EnumerateFiles(TheILMAppContext.IISSiteLogSubFolderPath, "*.log")];
                 txtFiles.Sort();
                 foreach (string filePath in txtFiles)
                 {
-                    List<string> lines = new();
+                    List<string> lines = [];
 
                     // Create a new IISLogFile object and set its properties based on the file information
-                    IISLogFile iisLogFile = new();
-
-                    iisLogFile.DomainName = TheAppConfiguration.IISSiteDomainName;
-                    iisLogFile.DomainID = TheAppConfiguration.IISSiteID;
-                    iisLogFile.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
-                    iisLogFile.FilePath = filePath;
-                    iisLogFile.FileName = Path.GetFileName(filePath);
+                    IISLogFile iisLogFile = new()
+                    {
+                        DomainName = TheILMAppContext.IISSiteDomainName,
+                        DomainID = TheILMAppContext.IISSiteID,
+                        SubFolder = TheILMAppContext.IISSiteLogSubFolderName,
+                        FilePath = filePath,
+                        FileName = Path.GetFileName(filePath)
+                    };
 
                     try
                     {
@@ -38,19 +38,17 @@ namespace IISLogsManager.DataBase
                         iisLogFile.FileInfo = new FileInfo(filePath);
 
                         // Open file in read-only mode, allowing shared read/write access
-                        using (FileStream fs = new FileStream(
+                        using FileStream fs = new(
                             filePath,
                             FileMode.Open,
                             FileAccess.Read,
-                            FileShare.ReadWrite))
+                            FileShare.ReadWrite);
 
-                        using (StreamReader reader = new StreamReader(fs))
+                        using StreamReader reader = new(fs);
+                        string? line;
+                        while ((line = reader.ReadLine()) != null)
                         {
-                            string? line;
-                            while ((line = reader.ReadLine()) != null)
-                            {
-                                lines.Add(line);
-                            }
+                            lines.Add(line);
                         }
                     }
                     catch (FileNotFoundException)
@@ -122,7 +120,7 @@ namespace IISLogsManager.DataBase
 
         public IISLogFiles GetMarkedFiles()
         {
-            IISLogFiles markedFiles = new();
+            IISLogFiles markedFiles = [];
             foreach (IISLogFile logFile in this)
             {
                 if (logFile.IsMarked)

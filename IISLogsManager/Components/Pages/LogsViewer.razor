@@ -1,11 +1,14 @@
-﻿@page "/logsviewer"
+﻿@page "/logsviewer/{UrlContextID}"
+@using System.Globalization
 @using System.Reflection
 @using IISLogsManager.Database
+@using IISLogsManager.ILMAppConfigNameSpace
 @using Microsoft.AspNetCore.Components
+@using static IISLogsManager.ILMAppConfigNameSpace.ILMAppConfiguration
 
 <PageTitle>View logs</PageTitle>
 
-<h3>View logs content of @TheAppConfiguration.IISSiteSelectedLogFile.FileName in @TheAppConfiguration.IISSiteLogSubFolderName from domain/subdomain @TheAppConfiguration.IISSiteDomainName </h3>
+<h3>View logs content of @TheILMAppContext.IISSiteSelectedLogFile.FileName in @TheILMAppContext.IISSiteLogSubFolderName from domain/subdomain @TheILMAppContext.IISSiteDomainName </h3>
 <br />
 
 <div style="display:flex;flex-direction:row">
@@ -19,10 +22,10 @@
         <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportTheMarkedRowsToCsvButtonClicked()">Export the marked rows</Button>
     </div>
     <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
-        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportTheFileToCsvButtonClicked()">Export the file @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
+        <Button Color="ButtonColor.Success" Size="ButtonSize.Medium" @onclick="() => ExportTheFileToCsvButtonClicked()">Export the file @TheILMAppContext.IISSiteSelectedLogFile.FileName to csv</Button>
     </div>
     <div style="margin:10px;display:flex;text-align:center;width:20%;flex-direction:column">
-        <Button Color="ButtonColor.Danger" Size="ButtonSize.Medium" @onclick="() => DeleteTheFileButtonClicked()">Delete the file @TheAppConfiguration.IISSiteSelectedLogFile.FileName to csv</Button>
+        <Button Color="ButtonColor.Danger" Size="ButtonSize.Medium" @onclick="() => DeleteTheFileButtonClicked()">Delete the file @TheILMAppContext.IISSiteSelectedLogFile.FileName to csv</Button>
     </div>
 </div>
 
@@ -109,7 +112,7 @@
     <FooterTemplate>
 
         <Button Color="ButtonColor.Primary" @onclick="HideModalClick">Annuler/Retour</Button>
-        @if (TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked)
+        @if (TheILMAppContext.IISSiteSelectedLogFileRow.IsMarked)
         {
             <Button Color="ButtonColor.Warning" @onclick="MarkUnmarkTheLineClicked">UnMark the line</Button>
         }
@@ -122,6 +125,9 @@
 </Modal>
 
 @code {
+    [Parameter]
+    public string UrlContextID { get; set; } = string.Empty;
+
     private Modal modal = default!;
     BlazorBootstrap.Grid<IISLogRecord> grid = default!;
 
@@ -141,22 +147,30 @@
 
     private string manageFilesPageUri = "/managefiles";
 
+
+    public ILMAppContext TheILMAppContext { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
+    }
+
     protected override async void OnAfterRender(bool firstTime)
     {
-        if (!File.Exists(TheAppConfiguration.IISSiteSelectedLogFile.FilePath))
+        if (!File.Exists(TheILMAppContext.IISSiteSelectedLogFile.FilePath))
         {
-            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Inexisting selection", msg1Arg: $"The selected file {TheAppConfiguration.IISSiteSelectedLogFile.FilePath} doesn't exist on the site or ISS_ISURS have no access");
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Inexisting selection", msg1Arg: $"The selected file {TheILMAppContext.IISSiteSelectedLogFile.FilePath} doesn't exist on the site or ISS_ISURS have no access");
 
             NavigationManager.NavigateTo(manageFilesPageUri, forceLoad: true);
         }
 
         if (firstTime)
         {
-            if (TheAppConfiguration.IISSiteSelectedLogFile.FileName != null && TheAppConfiguration.IISSiteSelectedLogFile.FileName != "")
+            if (TheILMAppContext.IISSiteSelectedLogFile.FileName != null && TheILMAppContext.IISSiteSelectedLogFile.FileName != "")
             {
                 try
                 {
-                    iisLogRecords = new IISLogRecords(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
+                    iisLogRecords = new IISLogRecords(TheILMAppContext);
                 }
 
                 catch (Exception e)
@@ -164,10 +178,10 @@
                     await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "One unexpected error occured while loading file content", msg1Arg: e.Message);
                 }
 
-                startDate = TheAppConfiguration.IISSiteSelectedLogFile.StartDate;
-                endDate = TheAppConfiguration.IISSiteSelectedLogFile.EndDate;
-                startTime = TheAppConfiguration.IISSiteSelectedLogFile.StartTime;
-                endTime = TheAppConfiguration.IISSiteSelectedLogFile.EndTime;
+                startDate = TheILMAppContext.IISSiteSelectedLogFile.StartDate;
+                endDate = TheILMAppContext.IISSiteSelectedLogFile.EndDate;
+                startTime = TheILMAppContext.IISSiteSelectedLogFile.StartTime;
+                endTime = TheILMAppContext.IISSiteSelectedLogFile.EndTime;
 
                 StateHasChanged();
             }
@@ -186,7 +200,7 @@
     private async Task OnRowClick(GridRowEventArgs<IISLogRecord> args)
     {
         IISLogRecord iisLogRecord = args.Item;
-        TheAppConfiguration.IISSiteSelectedLogFileRow = iisLogRecord;
+        TheILMAppContext.IISSiteSelectedLogFileRow = iisLogRecord;
 
         Type type = iisLogRecord.GetType();
 
@@ -220,13 +234,13 @@
     private async void MarkUnmarkTheLineClicked()
     {
         zoneMarked = false; // if the zone was marked, we unmark it and we consider that the zone is not marked anymore, even if some of the lines are still marked, as the user can mark/unmark manually some lines after that
-        if (TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked)
+        if (TheILMAppContext.IISSiteSelectedLogFileRow.IsMarked)
         {
-            TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked = false;
+            TheILMAppContext.IISSiteSelectedLogFileRow.IsMarked = false;
         }
         else
         {
-            TheAppConfiguration.IISSiteSelectedLogFileRow.IsMarked = true;
+            TheILMAppContext.IISSiteSelectedLogFileRow.IsMarked = true;
         }
         await HideModalClick();
         StateHasChanged();
@@ -293,8 +307,8 @@
     {
         try
         {
-            File.Delete(TheAppConfiguration.IISSiteSelectedLogFile.FilePath);
-            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
+            File.Delete(TheILMAppContext.IISSiteSelectedLogFile.FilePath);
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File deleted", msg1Arg: $"The file {TheILMAppContext.IISSiteSelectedLogFile.FileName} has been deleted successfully.");
             NavigationManager.NavigateTo(manageFilesPageUri, forceLoad: true);
         }
         catch (Exception ex)
@@ -305,7 +319,7 @@
 
     private async void ExportTheFileToCsvButtonClicked()
     {
-        string csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", "-complete.csv");
+        string csvFileName = TheILMAppContext.IISSiteSelectedLogFile.FileName.Replace(".log", "-complete.csv");
         ExportTheRowsToCSV(csvFileName, iisLogRecords, markedOnly: false);
     }
 
@@ -314,11 +328,11 @@
         string csvFileName;
         if (zoneMarked)
         {
-            csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", $"-{firstRecord.LineNumber}-{lastRecord.LineNumber}-rows.csv");
+            csvFileName = TheILMAppContext.IISSiteSelectedLogFile.FileName.Replace(".log", $"-{firstRecord.LineNumber}-{lastRecord.LineNumber}-rows.csv");
         }
         else
         {
-            csvFileName = TheAppConfiguration.IISSiteSelectedLogFile.FileName.Replace(".log", $"-selected-rows.csv");
+            csvFileName = TheILMAppContext.IISSiteSelectedLogFile.FileName.Replace(".log", $"-selected-rows.csv");
         }
 
         ExportTheRowsToCSV(csvFileName, iisLogRecords, markedOnly: true);
@@ -336,7 +350,7 @@
             }
             else
             {
-                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File empty", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} doesn't contain any records !");
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"File empty", msg1Arg: $"The file {TheILMAppContext.IISSiteSelectedLogFile.FileName} doesn't contain any records !");
                 return;
             }
 
@@ -351,7 +365,7 @@
 
             // SaveFile will return before the file is written, as it is waiting for user action
             await JS.InvokeAsync<object>("SaveToFile_SaveFileToDownloadFolder", csvFileNameForOutput, csvData);
-            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The file {TheAppConfiguration.IISSiteSelectedLogFile.FileName} has been exported successfully to {csvFileNameForOutput}.");
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: $"File exported", msg1Arg: $"The file {TheILMAppContext.IISSiteSelectedLogFile.FileName} has been exported successfully to {csvFileNameForOutput}.");
         }
         catch (Exception ex)
         {

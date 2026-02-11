@@ -1,4 +1,4 @@
-﻿using IISLogsManager.AppConfig;
+﻿using IISLogsManager.ILMAppConfigNameSpace;
 using Microsoft.Win32;
 using System.IO;
 using System.Text.Json;
@@ -14,7 +14,7 @@ namespace BuildConfigFile
     /// </summary>
     public partial class MainWindow : Window
     {
-        private AppConfiguration appConfig = new();
+        private ILMAppConfiguration appConfig = new();
 
         public MainWindow()
         {
@@ -62,7 +62,7 @@ namespace BuildConfigFile
 
                 try
                 {
-                    appConfig = JsonSerializer.Deserialize<AppConfiguration>(jsonStr) ?? new();
+                    appConfig = JsonSerializer.Deserialize<ILMAppConfiguration>(jsonStr) ?? new();
 
                     if (appConfig.IsLoaded)
                     {

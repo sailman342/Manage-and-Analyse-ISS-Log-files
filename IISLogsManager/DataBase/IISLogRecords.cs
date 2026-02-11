@@ -1,6 +1,5 @@
-﻿using IISLogsManager.AppConfig;
-using IISLogsManager.Database;
-using static IISLogsManager.AppConfig.AppConfiguration;
+﻿
+using IISLogsManager.ILMAppConfigNameSpace;
 
 namespace IISLogsManager.DataBase
 {
@@ -11,9 +10,10 @@ namespace IISLogsManager.DataBase
             this.Clear();
         }
 
-        public IISLogRecords(string filePath)
+        public IISLogRecords(ILMAppContext TheILMAppContext)
         {
             this.Clear();
+            string filePath = TheILMAppContext.IISSiteSelectedLogFile.FilePath;
             if (File.Exists(filePath))
             {
                 // Store each line in array of strings
@@ -22,7 +22,7 @@ namespace IISLogsManager.DataBase
                 {
 
                     // Open file in read-only mode, allowing shared read/write access
-                    using (FileStream fs = new FileStream(
+                    using (FileStream fs = new(
                         filePath,
                         FileMode.Open,
                         FileAccess.Read,
@@ -75,9 +75,9 @@ namespace IISLogsManager.DataBase
                             // Set file location properties
                             iisLogRecord.LineNumber = lineNumber;
                             iisLogRecord.OriginFilePath = filePath;
-                            iisLogRecord.SubFolder = TheAppConfiguration.IISSiteLogSubFolderName;
-                            iisLogRecord.DomainName = TheAppConfiguration.IISSiteDomainName;
-                            iisLogRecord.DomainID = TheAppConfiguration.IISSiteID;
+                            iisLogRecord.SubFolder = TheILMAppContext.IISSiteLogSubFolderName;
+                            iisLogRecord.DomainName = TheILMAppContext.IISSiteDomainName;
+                            iisLogRecord.DomainID = TheILMAppContext.IISSiteID;
 
                             // Parse the log line to set log record properties
                             iisLogRecord.ParseFromLogLine(splittedLine, definitions);

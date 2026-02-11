@@ -1,10 +1,8 @@
-﻿using IISLogsManager.DataBase;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
+﻿using Microsoft.AspNetCore.Components.Forms;
 using System.Text;
 using System.Text.Json;
 
-namespace IISLogsManager.AppConfig
+namespace IISLogsManager.ILMAppConfigNameSpace
 {
     /*
      * 
@@ -26,30 +24,18 @@ namespace IISLogsManager.AppConfig
         public List<IISSite> Sites { get; set; } = [];
     }
 
-    public class AppConfiguration
+    public class ILMAppConfiguration
     {
-        // edited in the config file app
+        // edited in the config file app is available to all processes as a Static variable
 
-        public string AdminLogin { get; set; } = "";
-        public string AdminPassword { get; set; } = "";
-        public string LogsRootDirectory { get; set; } = "C:\\inetpub\\logs\\LogFiles\\";
-        public IISSites IISSites { get; set; } = new();
+        public bool IsLoaded { get;  set; } = false;
+        public string AdminLogin { get;  set; } = "";
+        public string AdminPassword { get;  set; } = "";
+        public string LogsRootDirectory { get;  set; } = "";
+        public IISSites IISSites { get;  set; } = new();
 
         // used for app controlling, not edited in the configuation app for the config file
 
-        public bool IsLoaded { get; set; } = false;
-        public bool IsLoggedIn { get; set; } = false;
-
-        // set up by siteselecion page
-
-        public bool IISSiteSelected { get; set; } = false;
-        public string IISSiteID { get; set; } = "";
-        public string IISSiteLogSubFolderName { get; set; } = "";
-        public string IISSiteLogSubFolderPath  { get; set; } = ""; // TODO replace everywhere
-        public string IISSiteDomainName { get; set; } = "";
-
-        public IISLogFile IISSiteSelectedLogFile { get; set; } = new();
-        public IISLogRecord IISSiteSelectedLogFileRow { get; set; } = new();
         public static async Task<string> CopyAppConfigFileToBaseDirectory(IBrowserFile browserFile)
         {
             using Stream fileStream = browserFile.OpenReadStream(maxAllowedSize: 100000000);
@@ -62,13 +48,13 @@ namespace IISLogsManager.AppConfig
                     try
                     {
 
-                        AppConfiguration TheAppConfiguration = JsonSerializer.Deserialize<AppConfiguration>(fileContent) ?? new();
-                        if (TheAppConfiguration.IsLoaded == true)
+                        ILMAppConfiguration appConfiguration = JsonSerializer.Deserialize<ILMAppConfiguration>(fileContent) ?? new();
+                        if (appConfiguration != null && appConfiguration.LogsRootDirectory != "")
                         {
                             string baseDirectory = GetBaseDirectory();
                             try
                             {
-                                string localFileContent = EncryptConfig(TheAppConfiguration);
+                                string localFileContent = EncryptConfig(appConfiguration);
                                 File.WriteAllText(Path.Combine(baseDirectory, "AppConfig.txt"), localFileContent);
 
                                 fileStream.Dispose();
@@ -84,9 +70,9 @@ namespace IISLogsManager.AppConfig
                             return "Cannot decode the file !";
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        return "Cannot deserialize the text to AppConfiguration type";
+                        return $"Cannot deserialize the text to ILMAppConfiguration type : {ex.Message}";
                     }
                 }
                 catch (Exception ecanootread)
@@ -100,33 +86,20 @@ namespace IISLogsManager.AppConfig
             return "File stream is empty !";
         }
 
-        public AppConfiguration()
+        public ILMAppConfiguration()
         {
+            IsLoaded = false;
             AdminLogin = "";
             AdminPassword = "";
-            LogsRootDirectory = "C:\\inetpub\\logs\\LogFiles\\";
+            LogsRootDirectory = "";
             IISSites = new();
-
-            IsLoaded = false;
-            IsLoggedIn = false;
-
-            IISSiteLogSubFolderName = "";
-            IISSiteDomainName = "";
-            IISSiteID = "";
         }
 
-        // IsLoaded == false
-        public static AppConfiguration TheAppConfiguration  = new(); // { get; set; } make it available for debug
-
-        public static AppConfiguration GetAppConfig()
+        public static ILMAppConfiguration GetAppConfig()
         {
-            // note appConfig.IsLoaded == false;
-            // and iiissiteselected == false
 
-            AppConfiguration appConfig;
+            ILMAppConfiguration appConfig;
 
-            // THIS WILL OVERRIDE THE CURRENT CONFIG !
-            // should be done once at /home before loggin and no more afterwards !
             try
             {
                 string baseDirectory = GetBaseDirectory();
@@ -134,9 +107,10 @@ namespace IISLogsManager.AppConfig
 
                 appConfig = DecryptConfig(fileContent);
 
-                if (appConfig.IsLoaded)
+                if (appConfig.LogsRootDirectory != "")
                 {
                     // App config is loaded successfully
+                    appConfig.IsLoaded = true;
                 }
                 else
                 {
@@ -150,13 +124,13 @@ namespace IISLogsManager.AppConfig
             return appConfig;
         }
 
-        public static AppConfiguration DecryptConfig(string data)
+        private static ILMAppConfiguration DecryptConfig(string data)
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory; // get App Dll directory
             return DecryptConfig(data, baseDirectory);
         }
 
-        public static AppConfiguration DecryptConfig(string data, string key)
+        private static ILMAppConfiguration DecryptConfig(string data, string key)
         {
             try
             {
@@ -169,13 +143,8 @@ namespace IISLogsManager.AppConfig
             }
         }
 
-        public static string DecryptStr(string data)
-        {
-            string key = "DriveABmwZ4ToBeHappyIfYouhave hairs";
-            return DecryptStr(data, key);
-        }
 
-        public static string DecryptStr(string data, string key)
+        private static string DecryptStr(string data, string key)
         {
 
             Encoding unicode = Encoding.Unicode;
@@ -188,9 +157,9 @@ namespace IISLogsManager.AppConfig
                 return "";
             }
         }
-        public static AppConfiguration DecodeFromBase64(string str)
+        private static ILMAppConfiguration DecodeFromBase64(string str)
         {
-            AppConfiguration? appConfig;
+            ILMAppConfiguration? appConfig;
             try
             {
                 byte[] decoded = Convert.FromBase64String(str);
@@ -198,10 +167,9 @@ namespace IISLogsManager.AppConfig
 
                 if (data != null && data != "")
                 {
-                    appConfig = JsonSerializer.Deserialize<AppConfiguration>(data);
-                    if (appConfig != null)
+                    appConfig = JsonSerializer.Deserialize<ILMAppConfiguration>(data);
+                    if ( appConfig != null && appConfig.LogsRootDirectory != "")
                     {
-                        appConfig.IsLoaded = true;
                         return appConfig;
                     }
                 }
@@ -217,20 +185,20 @@ namespace IISLogsManager.AppConfig
         }
 
         // use App Domain Base Directory as key for decryption
-        public static string GetBaseDirectory()
+        private static string GetBaseDirectory()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory; // get App Dll directory
             return baseDirectory;
         }
 
-        public static string EncryptConfig(AppConfiguration appConfig)
+        private static string EncryptConfig(ILMAppConfiguration appConfig)
         {
             // Use App Domain Base Directory as key for encryption
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory; // get App Dll directory
             return EncryptConfig(appConfig, baseDirectory);
         }
 
-        public static string EncryptConfig(AppConfiguration appConfig, string key)
+        private static string EncryptConfig(ILMAppConfiguration appConfig, string key)
         {
 
             Encoding unicode = Encoding.Unicode;
@@ -244,13 +212,13 @@ namespace IISLogsManager.AppConfig
             }
         }
 
-        public static string EncodeToBase64(AppConfiguration appConfig)
+        private static string EncodeToBase64(ILMAppConfiguration appConfig)
         {
             string jsonStr = JsonSerializer.Serialize(appConfig);
             return EncodeToBase64Str(jsonStr);
         }
 
-        public static string EncodeToBase64Str(string toEncode)
+        private static string EncodeToBase64Str(string toEncode)
         {
             byte[] data = Encoding.ASCII.GetBytes(toEncode);
             string base64Data = Convert.ToBase64String(data);

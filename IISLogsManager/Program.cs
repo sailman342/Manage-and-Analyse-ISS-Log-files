@@ -1,4 +1,5 @@
 using IISLogsManager.Components;
+using IISLogsManager.ILMAppConfigNameSpace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,8 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddServerSideBlazor()
     .AddCircuitOptions(options => { options.DetailedErrors = true; });
+
+builder.Services.AddSingleton<IILMAppContextServices, ILMAppContextServices>();
 
 var app = builder.Build();
 

@@ -39,22 +39,26 @@
     private IEnumerable<NavItem> GetNavItems()
     {
         int id = 1;
+
+        string[] splittedUri = NavigationManager.Uri.Split('/');
+        string urlContextID = splittedUri[splittedUri.Length - 1] ?? string.Empty;
+        ILMAppContext theILMAppContext = ILMAppContextServices.GetILMAppContext(urlContextID);
+
         navItems = new List<NavItem>
                    {
-                       new NavItem { Id = id++.ToString(), Href = "/", IconName = IconName.HouseDoorFill, Text = "Home", Match=NavLinkMatch.All},
+                       new NavItem { Id = id++.ToString(), Href = $"/{urlContextID}", IconName = IconName.HouseDoorFill, Text = "Home", Match=NavLinkMatch.All},
                    };
 
-        if (TheAppConfiguration.IsLoaded && TheAppConfiguration.IsLoggedIn)
+
+        if (theILMAppContext.IsLoaded && theILMAppContext.IsLoggedIn)
         {
-            navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/siteselection", IconName = IconName.ListUl, Text = "Site selection" });
-            if (TheAppConfiguration.IISSiteSelected)
+            navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = $"/siteselection/{urlContextID}", IconName = IconName.ListUl, Text = "Site selection" });
+            if (theILMAppContext.IISSiteSelected)
             {
-                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/managefiles", IconName = IconName.ListUl, Text = "Manage files" });
-                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = "/database", IconName = IconName.Database, Text = "DataBase" });
+                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = $"/managefiles/{urlContextID}", IconName = IconName.ListUl, Text = "Manage files" });
+                navItems = navItems.Append(new NavItem { Id = id++.ToString(), Href = $"/database/{urlContextID}", IconName = IconName.Database, Text = "DataBase" });
             }
-
-
-            navItems = navItems.Append(new NavItem { Id = "4", Href = "/settings", IconName = IconName.GearFill, Text = "Settings" });
+            navItems = navItems.Append(new NavItem { Id = "4", Href = $"/settings/{urlContextID}", IconName = IconName.GearFill, Text = "Settings" });
         }
 
         return navItems;

@@ -1,10 +1,15 @@
-﻿@page "/"
-@using System.Text.Json
+﻿@page "/{UrlContextID}"
+@page "/"
+
 @using System.Text
+@using System.Text.Json
+@using IISLogsManager.ILMAppConfigNameSpace
+@using static IISLogsManager.ILMAppConfigNameSpace.ILMAppConfiguration
+
 
 <PageTitle>Home</PageTitle>
 
-@if (TheAppConfiguration == null || !TheAppConfiguration.IsLoaded)
+@if (!TheILMAppContext.ILMAppConfig.IsLoaded)
 {
     <h3>Please load a valid configuration file !</h3>
     <Callout Heading="No valid configuration has been loaded yet !" Color="CalloutColor.Warning" Type="Info">
@@ -23,7 +28,7 @@
 }
 else
 {
-    if (TheAppConfiguration.IsLoggedIn)
+    if (TheILMAppContext.IsLoggedIn)
     {
         <h3>You are logged in !</h3>
         <Callout Heading="Already logged in !" Color="CalloutColor.Success" Type="Info">
@@ -66,42 +71,48 @@ else
 <ConfirmDialogSingleButton @ref="theSingleButtonConfirmDialog" />
 
 @code {
+    [Parameter]
+    public string UrlContextID { get; set; } = string.Empty;
+
+    private ConfirmDialogSingleButton theSingleButtonConfirmDialog = new();
 
     public string LoginUser { get; set; } = string.Empty;
     public string LogPassword { get; set; } = string.Empty;
 
-    private ConfirmDialogSingleButton theSingleButtonConfirmDialog = new();
+    public ILMAppContext TheILMAppContext { get; set; } = new();
 
     protected override void OnParametersSet()
     {
-        if (TheAppConfiguration == null || !TheAppConfiguration.IsLoaded || !TheAppConfiguration.IsLoggedIn)
-        {
-            TheAppConfiguration = GetAppConfig();            
-        }
+        // Config is loaded
+        TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
 
         base.OnParametersSet();
     }
+
     private void LogoutButtonClicked()
     {
-        TheAppConfiguration = new();
+        ILMAppContextServices.DeleteILMAppContextRecord(UrlContextID);
         string mainPageUri = "/";
         NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
     }
 
     private async Task LoginButtonClicked()
     {
-        if (LoginUser == TheAppConfiguration.AdminLogin && LogPassword == TheAppConfiguration.AdminPassword)    
+        if (LoginUser == TheILMAppContext.ILMAppConfig.AdminLogin && LogPassword == TheILMAppContext.ILMAppConfig.AdminPassword)
         {
-            TheAppConfiguration.IsLoggedIn = true;
-            string mainPageUri = "/siteselection";
-            NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
+            TheILMAppContext.IsLoaded = true;
+            TheILMAppContext.IsLoggedIn = true;
+            TheILMAppContext.LoggedUser = LoginUser; // For future use
+            UrlContextID = "[" + TheILMAppContext.LoggedUser + "-" + DateTime.Now.Ticks.ToString() + "]";
+            string siteselectionUri = $"/siteselection/{UrlContextID}";
+            ILMAppContextServices.SetILMAppContext(TheILMAppContext,UrlContextID);
+            NavigationManager.NavigateTo(siteselectionUri, forceLoad: true);
         }
         else
         {
             await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Login failed", msg1Arg: "Invalid username or password !");
         }
     }
-
 
     private async void LoadFile(InputFileChangeEventArgs e)
     {
@@ -113,8 +124,6 @@ else
                 string result = await CopyAppConfigFileToBaseDirectory(file);
                 if (result == "Succes")
                 {
-                    // back and forth should work :-)
-                    TheAppConfiguration = GetAppConfig();
                     await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Success, titleArg: "Config file load succeeded", msg1Arg: "Configuration file successfully loaded ");
                     string mainPageUri = "/";
                     NavigationManager.NavigateTo(mainPageUri, forceLoad: true);
