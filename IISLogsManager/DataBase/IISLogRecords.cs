@@ -70,7 +70,6 @@ namespace IISLogsManager.DataBase
                         if (!ln.StartsWith('#'))
                         {
 
-
                             string[] splittedLine = ln.Split(" ");
 
                             // Set file location properties

@@ -32,10 +32,10 @@ namespace IISLogsManager.DataBase
 
 
         [DB_ElementName("Date", "DATE", "Date of event")]
-        public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+        public DateOnly Date { get; set; } = DateOnly.MinValue;
 
         [DB_ElementName("Time", "TIME","Time of event")]
-        public TimeOnly Time { get; set; } = TimeOnly.FromDateTime(DateTime.Now);
+        public TimeOnly Time { get; set; } = TimeOnly.MinValue;
 
         // We use the IIS nomenclature for the following fields
         //s-sitename s-computername s-ip cs-method cs-uri-stem cs-uri-query
@@ -107,6 +107,8 @@ namespace IISLogsManager.DataBase
         // Used internally for programmatic purposes
 
         public bool IsMarked { get; set; } = false; // Used to mark/unmark records for selection
+
+        public DateTime DateTime = DateTime.MinValue;
 
         public string GetLogRecordHeaderCSVString()
         {
