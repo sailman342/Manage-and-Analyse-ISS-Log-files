@@ -1,8 +1,8 @@
 ﻿@page "/siteselection/{UrlContextID}"
 
-<PageTitle>Site selection</PageTitle>
+<PageTitle>Site selection </PageTitle>
 
-<center><h3>Select the IIS site to work with</h3></center>
+<center><h3>Select the IIS site to work with in @TheILMAppContext.ILMAppConfig.LogsRootDirectory</h3></center>
 
 <Callout Heading="Select a log file to analyse" Color="CalloutColor.Info" Type="Info">
     <p>
@@ -23,7 +23,7 @@
     </div>
     <div style="margin:10px;display:flex;text-align:left;width:50%;flex-direction:column">
         <h3>Available IIS Sites in the config file</h3>
-        @foreach (IISSite site in TheILMAppContext.ILMAppConfig.IISSites.Sites)
+        @foreach (IISSite site in TheILMAppContext.ILMAppConfig.Sites)
         {
             <p>
                 @if (!Directory.Exists(Path.Combine(TheILMAppContext.ILMAppConfig.LogsRootDirectory, site.LogSubFolder)))
@@ -71,7 +71,7 @@
             {
                 string dir = directoriesList[index].Substring(TheILMAppContext.ILMAppConfig.LogsRootDirectory.Trim().Length);
                 directoriesList[index] = $"{dir} IS NOT in the configuration file";
-                foreach (IISSite site in TheILMAppContext.ILMAppConfig.IISSites.Sites)
+                foreach (IISSite site in TheILMAppContext.ILMAppConfig.Sites)
                 {
                     if (dir.Trim().ToLower() == site.LogSubFolder.Trim().ToLower())
                     {

@@ -98,12 +98,12 @@ else
 
     private async Task LoginButtonClicked()
     {
-        if (LoginUser == TheILMAppContext.ILMAppConfig.AdminLogin && LogPassword == TheILMAppContext.ILMAppConfig.AdminPassword)
+        if (LoginUserIsValid())
         {
             TheILMAppContext.IsLoaded = true;
             TheILMAppContext.IsLoggedIn = true;
             TheILMAppContext.LoggedUser = LoginUser; // For future use
-            UrlContextID = "[" + TheILMAppContext.LoggedUser + "-" + DateTime.Now.Ticks.ToString() + "]";
+            UrlContextID = "[" + LoginUser + "-" + DateTime.Now.Ticks.ToString() + "]";
             string siteselectionUri = $"/siteselection/{UrlContextID}";
             ILMAppContextServices.SetILMAppContext(TheILMAppContext,UrlContextID);
             NavigationManager.NavigateTo(siteselectionUri, forceLoad: true);
@@ -112,6 +112,25 @@ else
         {
             await theSingleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Login failed", msg1Arg: "Invalid username or password !");
         }
+    }
+
+    private bool LoginUserIsValid()
+    {
+        if(LoginUser == TheILMAppContext.ILMAppConfig.AdminLogin && LogPassword == TheILMAppContext.ILMAppConfig.AdminPassword)
+        {
+            return true;
+        }
+        else
+        {
+            foreach (var user in TheILMAppContext.ILMAppConfig.Users)
+            {
+                if (LoginUser == user.Login && LogPassword == user.Password)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private async void LoadFile(InputFileChangeEventArgs e)

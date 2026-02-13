@@ -98,11 +98,32 @@ namespace BuildConfigFile
                     string[] parts = trimmedLine.Split(';');
                     if (parts.Length >= 3)
                     {
-                        IISSite site = new IISSite();
-                        site.ID = parts[0].Trim();
-                        site.LogSubFolder = parts[1].Trim();
-                        site.DomainName = parts[2].Trim();
-                        appConfig.IISSites.Sites.Add(site);
+                        IISSite site = new()
+                        {
+                            ID = parts[0].Trim(),
+                            LogSubFolder = parts[1].Trim(),
+                            DomainName = parts[2].Trim()
+                        };
+                        appConfig.Sites.Add(site);
+                    }
+                }
+            }
+
+            string[] LogsRootUsersTexts = Regex.Split(UsersListTextBox.Text, "\r\n|\r|\n");
+            foreach (string line in LogsRootUsersTexts)
+            {
+                string trimmedLine = line.Trim();
+                if (trimmedLine.Length > 0)
+                {
+                    string[] parts = trimmedLine.Split(';');
+                    if (parts.Length >= 2)
+                    {
+                        IISUser user = new()
+                        {
+                            Login = parts[0].Trim(),
+                            Password = parts[1].Trim()
+                        };
+                        appConfig.Users.Add(user);
                     }
                 }
             }
@@ -112,9 +133,13 @@ namespace BuildConfigFile
             AdminLoginTextBox.Text = appConfig.AdminLogin;
             AdminPasswordTextBox.Text = appConfig.AdminPassword;
             LogsRootDirectoryTextBox.Text = appConfig.LogsRootDirectory;
-            foreach(IISSite site in appConfig.IISSites.Sites)
+            foreach(IISSite site in appConfig.Sites)
             {
                 SitesListTextBox.Text += $"{site.ID} ; {site.LogSubFolder} ; {site.DomainName}\r\n";
+            }
+            foreach (IISUser user in appConfig.Users)
+            {
+                UsersListTextBox.Text += $"{user.Login} ; {user.Password}\r\n";
             }
         }
 
@@ -124,6 +149,7 @@ namespace BuildConfigFile
             AdminPasswordTextBox.Text="";
             LogsRootDirectoryTextBox.Text= "C:\\inetpub\\logs\\LogFiles\\";
             SitesListTextBox.Text="";
+            UsersListTextBox.Text="";
         }
     }
 }

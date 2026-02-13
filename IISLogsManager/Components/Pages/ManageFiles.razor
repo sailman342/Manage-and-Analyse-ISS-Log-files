@@ -8,7 +8,7 @@
 
 <PageTitle>Manage log files</PageTitle>
 
-<h3>Manage Log Files</h3>
+<h3>Manage Log Files for @TheILMAppContext.IISSiteDomainName in @TheILMAppContext.IISSiteLogSubFolderPath</h3>
 
 <Callout Heading="Manage Log Files !" Color="CalloutColor.Info" Type="Info">
     <p>
@@ -36,7 +36,7 @@
 </Progress>
 
 <div style="display:flex;width:100%;flex-direction:row">
-        <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+    <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
         <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="UnMarkAllFiles">UnMark all</Button>
     </div>
     <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
@@ -129,9 +129,9 @@
             }
             else
             {
-            <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
-                <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Mark</Button>
-            </div>                
+                <div style="margin:10px;display:flex;text-align:left;width:20%;flex-direction:column">
+                    <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" Disabled="@disableAllButtons" @onclick="MarkUnmarkFileClick">Mark</Button>
+                </div>
             }
 
 
@@ -168,9 +168,21 @@
     protected override void OnParametersSet()
     {
         TheILMAppContext = ILMAppContextServices.GetILMAppContext(UrlContextID);
+    }
 
-        iisLogFiles = new IISLogFiles(TheILMAppContext);
-        Console.WriteLine($"iisLogFiles count : {iisLogFiles.Count()}");
+    protected override async void OnAfterRender(bool firstTime)
+    {
+        if (firstTime)
+        {
+            try
+            {
+                iisLogFiles = new IISLogFiles(TheILMAppContext);
+            }
+            catch (Exception ex)
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Problem in reading log files", msg1Arg: $"Exception in IISLogFiles : {ex.Message}");
+            }
+        }
     }
 
     private async Task<GridDataProviderResult<IISLogFile>> LogFilesRecordsDataProvider(GridDataProviderRequest<IISLogFile> request)
@@ -203,28 +215,28 @@
                     builder.OpenElement(seq++, "strong");
                     builder.AddContent(seq++, "FileInfo-Path" + " :");
                     builder.CloseElement(); // strong
-                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.FullName );
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.FullName);
                     builder.CloseElement(); //p
 
                     builder.OpenElement(seq++, "p");
                     builder.OpenElement(seq++, "strong");
                     builder.AddContent(seq++, "FileInfo-CreationDate" + " :");
                     builder.CloseElement(); // strong
-                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.CreationTime );
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.CreationTime);
                     builder.CloseElement(); //p
 
                     builder.OpenElement(seq++, "p");
                     builder.OpenElement(seq++, "strong");
                     builder.AddContent(seq++, "FileInfo-Size" + " :");
                     builder.CloseElement(); // strong
-                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.Length.ToString("#,0",nfi) + " Bytes");
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.Length.ToString("#,0", nfi) + " Bytes");
                     builder.CloseElement(); //p
 
                     builder.OpenElement(seq++, "p");
                     builder.OpenElement(seq++, "strong");
                     builder.AddContent(seq++, "FileInfo-Readonly" + " :");
                     builder.CloseElement(); // strong
-                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.IsReadOnly );
+                    builder.AddContent(seq++, " " + iisLogFile.FileInfo.IsReadOnly);
                     builder.CloseElement(); //p
                 }
                 else
@@ -245,7 +257,7 @@
                         builder.AddContent(seq++, "(" + (elementNameAttribute?.ElementDescription ?? string.Empty) + ")");
                         builder.CloseElement(); // strong
                     }
-                    builder.CloseElement(); //p                   
+                    builder.CloseElement(); //p
                 }
             }
         };
@@ -389,7 +401,14 @@
 
         progressBar.SetWidth(0.0);
         // include the new file if any
-        iisLogFiles = new IISLogFiles(TheILMAppContext);
+        try
+        {
+            iisLogFiles = new IISLogFiles(TheILMAppContext);
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Problem in reading log files", msg1Arg: $"Exception in IISLogFiles : {ex.Message}");
+        }
         UnMarkAllFiles();
         await grid.RefreshDataAsync();
         StateHasChanged();
@@ -421,7 +440,16 @@
         foreach (IISLogFile fileToExport in filesToExportToCsv)
         {
             TheILMAppContext.IISSiteSelectedLogFile = fileToExport;
-            IISLogRecords iisLogRecords = new IISLogRecords(TheILMAppContext);
+            IISLogRecords iisLogRecords  = new();
+            try
+            {
+                iisLogRecords = new IISLogRecords(TheILMAppContext);
+            }
+            catch (Exception ex)
+            {
+                await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Problem in reading log files", msg1Arg: $"Exception in IISLogFiles : {ex.Message}");
+
+            }
             csvData += iisLogRecords[0].GetLogRecordHeaderCSVString();
 
             if (iisLogRecords.Count() > 0)
@@ -490,8 +518,15 @@
         {
             await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
         }
+        try
+        {
+            iisLogFiles = new IISLogFiles(TheILMAppContext);
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Problem in reading log files", msg1Arg: $"Exception in IISLogFiles : {ex.Message}");
 
-        iisLogFiles = new IISLogFiles(TheILMAppContext);
+        }
         await grid.RefreshDataAsync();
         StateHasChanged();
     }
@@ -532,7 +567,14 @@
             await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: $"Unexpected error while deleting", msg1Arg: $"Exception error : {ex.Message}");
         }
 
-        iisLogFiles = new IISLogFiles(TheILMAppContext);
+        try
+        {
+            iisLogFiles = new IISLogFiles(TheILMAppContext);
+        }
+        catch (Exception ex)
+        {
+            await singleButtonConfirmDialog.ShowAsync(buttonColorArg: ButtonColor.Warning, titleArg: "Problem in reading log files", msg1Arg: $"Exception in IISLogFiles : {ex.Message}");
+        }
         await grid.RefreshDataAsync();
         await HideModalClick();
         StateHasChanged();

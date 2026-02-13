@@ -19,11 +19,20 @@ namespace IISLogsManager.ILMAppConfigNameSpace
         public string LogSubFolder { get; set; } = "";
     }
 
-    public class IISSites
+    public class IISSites : List<IISSite>
     {
-        public List<IISSite> Sites { get; set; } = [];
     }
 
+    public class IISUser
+            {
+        public string Login { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    public class  IISUsers : List<IISUser> 
+    {
+
+    }
     public class ILMAppConfiguration
     {
         // edited in the config file app is available to all processes as a Static variable
@@ -32,7 +41,9 @@ namespace IISLogsManager.ILMAppConfigNameSpace
         public string AdminLogin { get;  set; } = "";
         public string AdminPassword { get;  set; } = "";
         public string LogsRootDirectory { get;  set; } = "";
-        public IISSites IISSites { get;  set; } = new();
+        public IISSites Sites { get;  set; } = [];
+
+        public IISUsers Users { get; set; } = [];
 
         // used for app controlling, not edited in the configuation app for the config file
 
@@ -92,7 +103,8 @@ namespace IISLogsManager.ILMAppConfigNameSpace
             AdminLogin = "";
             AdminPassword = "";
             LogsRootDirectory = "";
-            IISSites = new();
+            Sites = [];
+            Users= [];
         }
 
         public static ILMAppConfiguration GetAppConfig()

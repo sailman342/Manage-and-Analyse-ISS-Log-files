@@ -51,21 +51,21 @@ namespace IISLogsManager.DataBase
                             lines.Add(line);
                         }
                     }
-                    catch (FileNotFoundException)
+                    catch (FileNotFoundException ex)
                     {
-                        Console.WriteLine("Error: File not found.");
+                        throw new Exception ($"Error: File not found : {filePath} {ex.Message}");
                     }
-                    catch (UnauthorizedAccessException)
+                    catch (UnauthorizedAccessException ex)
                     {
-                        Console.WriteLine("Error: Access denied. Check file permissions.");
+                        throw new Exception($"Error: Access denied. Check file permissions : {filePath} {ex.Message}");
                     }
                     catch (IOException ex)
                     {
-                        Console.WriteLine($"I/O Error: {ex.Message}");
+                        throw new Exception($"I/O Error : {filePath} {ex.Message}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Unexpected error: {ex.Message}");
+                        throw new Exception($"Unexpected error : {filePath} {ex.Message}");
                     }
 
                     // Read the log file and parse its content to set the StartDate, StartTime, EndDate, EndTime, and NumLogLines properties
@@ -108,7 +108,7 @@ namespace IISLogsManager.DataBase
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error parsing line {ln} in file {filePath}: {ex.Message}");
+                            throw new Exception ($"Error parsing line {ln} in file {filePath}: {ex.Message}");
                         }
                         iisLogFile.NumLogLines = lineNumber;
                     }
